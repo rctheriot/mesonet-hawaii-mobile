@@ -24,9 +24,10 @@ export async function fetchHistoricalMeasurements(
   const now = new Date();
   const start = new Date(now);
 
-  if (range === '1h') start.setHours(now.getHours() - 1);
-  else if (range === '24h') start.setDate(now.getDate() - 1);
-  else start.setDate(now.getDate() - 7);
+  if (range === '6h')       start.setTime(now.getTime() - 6 * 60 * 60 * 1000);
+  else if (range === '24h') start.setTime(now.getTime() - 24 * 60 * 60 * 1000);
+  else if (range === '3d')  start.setTime(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+  else                      start.setTime(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   const { data } = await apiGet<Measurement[] | Record<string, Measurement>>(
     '/mesonet/db/measurements',

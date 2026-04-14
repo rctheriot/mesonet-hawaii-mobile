@@ -1,6 +1,6 @@
 import { useLatestMeasurements } from '../../hooks/useMeasurements';
 import { useAppContext } from '../../context/AppContext';
-import { ALLOWED_VARIABLES, convertValue, formatValue, groupByCategory } from '../../utils/units';
+import { ALLOWED_VARIABLES, convertValue, formatValue, groupByCategory, mergeWindReadings } from '../../utils/units';
 
 interface LatestReadingsProps {
   stationId: string;
@@ -34,8 +34,9 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
       latestByVar.set(m.variable, m);
     }
   }
-  const readings = Array.from(latestByVar.values());
-  const groups = groupByCategory(readings, m => m.variable);
+  const allReadings = Array.from(latestByVar.values());
+  const { windReadings, remainder } = mergeWindReadings(allReadings);
+  const groups = groupByCategory(remainder, m => m.variable, m => m.variable_display_name ?? m.variable);
 
   return (
     <div className="space-y-4">
@@ -46,6 +47,8 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
           </p>
           <div className="grid grid-cols-2 gap-2">
             {items.map((m) => {
+              // Render wind speed cards with direction info merged in
+              const wind = windReadings.find(w => w.speedMeasurement.variable === m.variable);
               const converted = convertValue(Number(m.value), m.units ?? '', settings.units, m.variable);
               return (
                 <button
@@ -58,10 +61,15 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
                   }`}
                 >
                   <div className="text-sm text-slate-500 dark:text-slate-400 truncate">
-                    {m.variable_display_name ?? m.variable}
+                    {wind
+                      ? `Wind${wind.dirDeg != null ? ` · ${Math.round(wind.dirDeg)}°` : ''}`
+                      : (m.variable_display_name ?? m.variable)}
                   </div>
                   <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {formatValue(converted.value)}
+                    {wind?.compass && (
+                      <span className="mr-1">{wind.compass}</span>
+                    )}
+                    {formatValue(converted.value, m.variable)}
                     {converted.unit && (
                       <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">{converted.unit}</span>
                     )}

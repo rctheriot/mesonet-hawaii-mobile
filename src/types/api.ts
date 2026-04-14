@@ -37,4 +37,4 @@ export interface StationMonitor {
   [key: string]: unknown;
 }
 
-export type TimeRange = '1h' | '24h' | '7d';
+export type TimeRange = '6h' | '24h' | '3d' | '7d';

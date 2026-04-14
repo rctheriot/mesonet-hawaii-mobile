@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { useHistoricalMeasurements } from '../../hooks/useMeasurements';
 import { useAppContext } from '../../context/AppContext';
-import { convertValue } from '../../utils/units';
+import { convertValue, formatValue } from '../../utils/units';
 import type { TimeRange } from '../../types/api';
 
 interface HistoryChartProps {
@@ -14,28 +14,33 @@ interface HistoryChartProps {
 }
 
 const RANGES: { label: string; value: TimeRange }[] = [
-  { label: '1h', value: '1h' },
+  { label: '6h',  value: '6h' },
   { label: '24h', value: '24h' },
-  { label: '7d', value: '7d' },
+  { label: '3d',  value: '3d' },
+  { label: '7d',  value: '7d' },
 ];
 
 // Generate evenly-spaced tick timestamps for a given range.
 // These are computed from the fixed range window, independent of data density.
 function generateTicks(range: TimeRange, now: number): number[] {
-  if (range === '1h') {
-    const start = now - 60 * 60 * 1000;
-    // Every 15 minutes: 0, 15, 30, 45, 60
-    return [0, 15, 30, 45, 60].map(m => start + m * 60 * 1000);
+  if (range === '6h') {
+    const start = now - 6 * 60 * 60 * 1000;
+    // Every 1 hour: 0, 1, 2, 3, 4, 5, 6 → 7 ticks
+    return [0, 1, 2, 3, 4, 5, 6].map(h => start + h * 60 * 60 * 1000);
   }
   if (range === '24h') {
     const start = now - 24 * 60 * 60 * 1000;
-    // Every 4 hours: 0, 4, 8, 12, 16, 20, 24
+    // Every 4 hours: 0, 4, 8, 12, 16, 20, 24 → 7 ticks
     return [0, 4, 8, 12, 16, 20, 24].map(h => start + h * 60 * 60 * 1000);
+  }
+  if (range === '3d') {
+    const start = now - 3 * 24 * 60 * 60 * 1000;
+    // Every 12 hours: 0, 12, 24, 36, 48, 60, 72 → 7 ticks
+    return [0, 12, 24, 36, 48, 60, 72].map(h => start + h * 60 * 60 * 1000);
   }
   // 7d: one tick per calendar midnight within the range
   const ticks: number[] = [];
   const rangeStart = now - 7 * 24 * 60 * 60 * 1000;
-  // Start from today's midnight and walk back 8 days
   const todayMidnight = new Date(now);
   todayMidnight.setHours(0, 0, 0, 0);
   for (let i = 0; i <= 8; i++) {
@@ -48,13 +53,14 @@ function generateTicks(range: TimeRange, now: number): number[] {
 // Format a tick timestamp for display on the X-axis.
 function formatTick(ts: number, range: TimeRange): string {
   const d = new Date(ts);
-  if (range === '1h') {
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    return `${hh}:${mm}`;
-  }
-  if (range === '24h') {
+  if (range === '6h' || range === '24h') {
     return `${String(d.getHours()).padStart(2, '0')}:00`;
+  }
+  if (range === '3d') {
+    const h = d.getHours();
+    // Show date label at midnight, hour label otherwise
+    if (h === 0) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${String(h).padStart(2, '0')}:00`;
   }
   // 7d: "Wed 1"
   return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
@@ -63,8 +69,12 @@ function formatTick(ts: number, range: TimeRange): string {
 // Format the tooltip label (shown at the top of the hover popup).
 function formatLabel(ts: number, range: TimeRange): string {
   const d = new Date(ts);
-  if (range === '1h' || range === '24h') {
+  if (range === '6h' || range === '24h') {
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  }
+  if (range === '3d') {
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
+      ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   }
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
@@ -78,8 +88,9 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
   const now = useMemo(() => Date.now(), [range]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rangeMs: Record<TimeRange, number> = {
-    '1h':  1 * 60 * 60 * 1000,
+    '6h':  6 * 60 * 60 * 1000,
     '24h': 24 * 60 * 60 * 1000,
+    '3d':  3 * 24 * 60 * 60 * 1000,
     '7d':  7 * 24 * 60 * 60 * 1000,
   };
 
@@ -173,7 +184,10 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
                   tickFormatter={(ts: number) => formatTick(ts, range)}
                   tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
                 />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }} />
+                <YAxis
+                  tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
+                  tickFormatter={(v) => formatValue(Number(v), varId ?? undefined)}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'var(--chart-tooltip-bg, #ffffff)',
@@ -183,7 +197,10 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
                   labelStyle={{ color: 'var(--chart-tick, #64748b)' }}
                   itemStyle={{ color: '#0ea5e9' }}
                   labelFormatter={(ts) => formatLabel(Number(ts), range)}
-                  formatter={(value) => [`${value ?? ''}${displayUnit ? ` ${displayUnit}` : ''}`, '']}
+                  formatter={(value) => [
+                    `${formatValue(Number(value), varId ?? undefined)}${displayUnit ? ` ${displayUnit}` : ''}`,
+                    '',
+                  ]}
                 />
                 <Bar dataKey="value" fill="#38bdf8" radius={[2, 2, 0, 0]} />
               </BarChart>
@@ -199,7 +216,10 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
                   tickFormatter={(ts: number) => formatTick(ts, range)}
                   tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
                 />
-                <YAxis tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }} />
+                <YAxis
+                  tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
+                  tickFormatter={(v) => formatValue(Number(v), varId ?? undefined)}
+                />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'var(--chart-tooltip-bg, #ffffff)',
@@ -209,7 +229,10 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
                   labelStyle={{ color: 'var(--chart-tick, #64748b)' }}
                   itemStyle={{ color: '#0ea5e9' }}
                   labelFormatter={(ts) => formatLabel(Number(ts), range)}
-                  formatter={(value) => [`${value ?? ''}${displayUnit ? ` ${displayUnit}` : ''}`, '']}
+                  formatter={(value) => [
+                    `${formatValue(Number(value), varId ?? undefined)}${displayUnit ? ` ${displayUnit}` : ''}`,
+                    '',
+                  ]}
                 />
                 <Line
                   type="monotone"

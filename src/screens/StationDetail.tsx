@@ -4,7 +4,7 @@ import { useQueryClient, useIsFetching } from '@tanstack/react-query';
 import { useStations, useStationMonitor } from '../hooks/useStations';
 import { useLatestMeasurements } from '../hooks/useMeasurements';
 import { useAppContext } from '../context/AppContext';
-import { ALLOWED_VARIABLES, convertValue, formatValue, groupByCategory } from '../utils/units';
+import { ALLOWED_VARIABLES, convertValue, formatValue, groupByCategory, mergeWindReadings } from '../utils/units';
 import { stationStatusKey, STATUS_BADGE, STATUS_LABEL } from '../theme';
 import HistoryChart from '../components/StationPanel/HistoryChart';
 import StationMeta from '../components/StationPanel/StationMeta';
@@ -157,7 +157,7 @@ export default function StationDetail() {
                 return (
                   <div className="flex items-end gap-2">
                     <span className="text-6xl font-bold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-                      {formatValue(c.value)}
+                      {formatValue(c.value, heroReading.variable)}
                     </span>
                     {c.unit && (
                       <span className="text-2xl text-slate-500 dark:text-slate-400 mb-1">{c.unit}</span>
@@ -212,41 +212,50 @@ export default function StationDetail() {
                 <p className="text-slate-400 text-base">Loading…</p>
               ) : readings.length === 0 ? (
                 <p className="text-slate-400 dark:text-slate-600 text-base">No readings available.</p>
-              ) : (
-                <div className="space-y-4">
-                  {groupByCategory(readings, m => m.variable).map(({ group, items }) => (
-                    <div key={group}>
-                      <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                        {group}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {items.map(m => {
-                          const c = convertValue(Number(m.value), m.units ?? '', settings.units, m.variable);
-                          return (
-                            <button
-                              key={m.variable}
-                              onClick={() => setSelectedVarId(v => v === m.variable ? null : m.variable)}
-                              className={`text-left p-4 rounded-xl border transition-colors ${
-                                selectedVarId === m.variable
-                                  ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
-                                  : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
-                              }`}
-                            >
-                              <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
-                                {m.variable_display_name ?? m.variable}
-                              </p>
-                              <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 mt-0.5">
-                                {formatValue(c.value)}
-                                {c.unit && <span className="text-sm text-slate-400 ml-1">{c.unit}</span>}
-                              </p>
-                            </button>
-                          );
-                        })}
+              ) : (() => {
+                const { windReadings, remainder } = mergeWindReadings(readings);
+                return (
+                  <div className="space-y-4">
+                    {groupByCategory(remainder, m => m.variable, m => m.variable_display_name ?? m.variable).map(({ group, items }) => (
+                      <div key={group}>
+                        <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+                          {group}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {items.map(m => {
+                            const wind = windReadings.find(w => w.speedMeasurement.variable === m.variable);
+                            const c = convertValue(Number(m.value), m.units ?? '', settings.units, m.variable);
+                            return (
+                              <button
+                                key={m.variable}
+                                onClick={() => setSelectedVarId(v => v === m.variable ? null : m.variable)}
+                                className={`text-left p-4 rounded-xl border transition-colors ${
+                                  selectedVarId === m.variable
+                                    ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
+                                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
+                                }`}
+                              >
+                                <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                                  {wind
+                                    ? `Wind${wind.dirDeg != null ? ` · ${Math.round(wind.dirDeg)}°` : ''}`
+                                    : (m.variable_display_name ?? m.variable)}
+                                </p>
+                                <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 mt-0.5">
+                                  {wind?.compass && (
+                                    <span className="mr-1">{wind.compass}</span>
+                                  )}
+                                  {formatValue(c.value, m.variable)}
+                                  {c.unit && <span className="text-sm text-slate-400 ml-1">{c.unit}</span>}
+                                </p>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
