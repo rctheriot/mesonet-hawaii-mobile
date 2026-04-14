@@ -53,7 +53,6 @@ export default function ExploreScreen() {
   }
 
   // When switching back to map view, re-pan to the selected station.
-  // MapLibre ignores easeTo() on hidden containers, so we replay it on reveal.
   useEffect(() => {
     if (view === 'map' && selectedStation) {
       setPanTo({ lat: selectedStation.lat, lng: selectedStation.lng });
@@ -173,6 +172,7 @@ export default function ExploreScreen() {
             darkMode={darkMode}
             onCenterOnUser={handleCenterOnUser}
             geoLoading={geoLoading}
+            isVisible={view === 'map'}
           />
         </div>
 
