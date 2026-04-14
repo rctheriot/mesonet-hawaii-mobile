@@ -130,7 +130,7 @@ export default function StationDetail() {
           {/* Station name */}
           <div className="flex items-start justify-between gap-3 mb-1">
             <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
-              {station.name ?? station.station_id}
+              {station.full_name ?? station.name ?? station.station_id}
             </h1>
           </div>
 

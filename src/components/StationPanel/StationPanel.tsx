@@ -105,7 +105,7 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 leading-tight truncate">
-                {station.name ?? station.station_id}
+                {station.full_name ?? station.name ?? station.station_id}
               </h2>
               {isStale && (
                 <span className="flex-shrink-0 text-sm font-medium px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700">
