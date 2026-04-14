@@ -174,7 +174,8 @@ export default function StationMap({
 
         const el = document.createElement('div');
         el.className = 'station-marker';
-        el.style.cssText = 'cursor:pointer; width:16px; height:16px;';
+        // Tall enough for the pin (24px) when selected; circle fits inside
+        el.style.cssText = 'cursor:pointer; width:20px; height:28px; display:flex; align-items:flex-end; justify-content:center;';
 
         const dot = document.createElement('div');
         dot.className = 'station-dot';
@@ -186,6 +187,21 @@ export default function StationMap({
           box-shadow: ${hollow ? 'none' : '0 0 4px rgba(0,0,0,0.5)'};
         `;
         el.appendChild(dot);
+
+        // Pin SVG — shown only when this station is selected
+        const pin = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        pin.setAttribute('class', 'station-pin');
+        pin.setAttribute('width', '20');
+        pin.setAttribute('height', '28');
+        pin.setAttribute('viewBox', '0 0 20 28');
+        pin.setAttribute('fill', 'none');
+        pin.style.cssText = 'display:none; position:absolute; top:0; left:0; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.45));';
+        pin.innerHTML = `
+          <path d="M10 0C4.477 0 0 4.477 0 10C0 16.5 10 28 10 28C10 28 20 16.5 20 10C20 4.477 15.523 0 10 0Z" fill="#0ea5e9"/>
+          <circle cx="10" cy="10" r="4" fill="white"/>
+        `;
+        el.style.position = 'relative';
+        el.appendChild(pin);
 
         el.addEventListener('mouseenter', () => { dot.style.transform = 'scale(1.4)'; });
         el.addEventListener('mouseleave', () => { dot.style.transform = 'scale(1)'; });
@@ -208,19 +224,26 @@ export default function StationMap({
     }
   }, [stations, monitorData]);
 
-  // Highlight selected station
+  // Highlight selected station — swap between circle dot and teardrop pin
   useEffect(() => {
     Object.entries(markersRef.current).forEach(([id, marker]) => {
       const el = marker.getElement();
       const dot = el.querySelector('.station-dot') as HTMLElement | null;
+      const pin = el.querySelector('.station-pin') as HTMLElement | null;
       if (!dot) return;
       const selected = id === selectedStationId;
       const meta = markerMetaRef.current[id];
-      dot.style.transform = selected ? 'scale(1.6)' : 'scale(1)';
-      dot.style.backgroundColor = selected ? '#0ea5e9' : meta?.color ?? '';
-      dot.style.border = selected
-        ? '2px solid white'
-        : '1px solid rgba(255,255,255,0.6)';
+      if (selected) {
+        dot.style.display = 'none';
+        if (pin) pin.style.display = 'block';
+      } else {
+        dot.style.display = '';
+        if (pin) pin.style.display = 'none';
+        dot.style.backgroundColor = meta?.hollow ? 'transparent' : (meta?.color ?? '');
+        dot.style.border = meta?.hollow
+          ? `2px dashed ${meta.color}`
+          : '1px solid rgba(255,255,255,0.6)';
+      }
     });
   }, [selectedStationId]);
 
@@ -258,15 +281,39 @@ export default function StationMap({
     }
 
     const el = document.createElement('div');
-    el.style.cssText = 'width:18px; height:18px; display:flex; align-items:center; justify-content:center;';
+    el.style.cssText = 'width:24px; height:24px; display:flex; align-items:center; justify-content:center; position:relative;';
+
+    // Outer pulsing ring
+    const ring = document.createElement('div');
+    ring.style.cssText = `
+      position:absolute; width:24px; height:24px; border-radius:50%;
+      background: rgba(59,130,246,0.25);
+      border: 1.5px solid rgba(59,130,246,0.5);
+      animation: user-loc-pulse 2s ease-in-out infinite;
+    `;
+    // Inner filled dot
     const dot = document.createElement('div');
     dot.style.cssText = `
-      width: 14px; height: 14px; border-radius: 50%;
+      position:relative; width:14px; height:14px; border-radius:50%;
       background: #3b82f6;
-      border: 2px solid white;
-      box-shadow: 0 0 0 3px rgba(59,130,246,0.35);
+      border: 2.5px solid white;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.4);
     `;
+    el.appendChild(ring);
     el.appendChild(dot);
+
+    // Inject keyframes once if not already present
+    if (!document.getElementById('user-loc-pulse-style')) {
+      const style = document.createElement('style');
+      style.id = 'user-loc-pulse-style';
+      style.textContent = `
+        @keyframes user-loc-pulse {
+          0%, 100% { transform: scale(1); opacity: 0.7; }
+          50% { transform: scale(1.5); opacity: 0.2; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
 
     userMarkerRef.current?.remove();
     userMarkerRef.current = new maplibregl.Marker({ element: el })

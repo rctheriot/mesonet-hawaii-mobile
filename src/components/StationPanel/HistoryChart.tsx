@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { useHistoricalMeasurements } from '../../hooks/useMeasurements';
 import { useAppContext } from '../../context/AppContext';
@@ -85,6 +86,9 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
   const domain: [number, number] = [now - rangeMs[range], now];
   const ticks = useMemo(() => generateTicks(range, now), [range, now]);
 
+  // Rainfall variables should use a bar chart to show discrete accumulation periods
+  const isRainfall = varId ? /^RF/.test(varId) : false;
+
   const rawUnits = data?.[0]?.units ?? '';
   const displayUnit = data?.[0]
     ? convertValue(0, rawUnits, settings.units, varId ?? undefined).unit
@@ -157,40 +161,66 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
         )}
         {!isLoading && chartData.length > 0 && (
           <ResponsiveContainer width="100%" height={160} minWidth={0}>
-            <LineChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
-              <XAxis
-                dataKey="ts"
-                type="number"
-                scale="time"
-                domain={domain}
-                ticks={ticks}
-                tickFormatter={(ts: number) => formatTick(ts, range)}
-                tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
-              />
-              <YAxis
-                tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--chart-tooltip-bg, #ffffff)',
-                  border: '1px solid var(--chart-tooltip-border, #e2e8f0)',
-                  fontSize: 12,
-                }}
-                labelStyle={{ color: 'var(--chart-tick, #64748b)' }}
-                itemStyle={{ color: '#0ea5e9' }}
-                labelFormatter={(ts) => formatLabel(Number(ts), range)}
-                formatter={(value) => [`${value ?? ''}${displayUnit ? ` ${displayUnit}` : ''}`, '']}
-              />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="#38bdf8"
-                dot={false}
-                strokeWidth={2}
-                connectNulls={false}
-              />
-            </LineChart>
+            {isRainfall ? (
+              <BarChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
+                <XAxis
+                  dataKey="ts"
+                  type="number"
+                  scale="time"
+                  domain={domain}
+                  ticks={ticks}
+                  tickFormatter={(ts: number) => formatTick(ts, range)}
+                  tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
+                />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--chart-tooltip-bg, #ffffff)',
+                    border: '1px solid var(--chart-tooltip-border, #e2e8f0)',
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: 'var(--chart-tick, #64748b)' }}
+                  itemStyle={{ color: '#0ea5e9' }}
+                  labelFormatter={(ts) => formatLabel(Number(ts), range)}
+                  formatter={(value) => [`${value ?? ''}${displayUnit ? ` ${displayUnit}` : ''}`, '']}
+                />
+                <Bar dataKey="value" fill="#38bdf8" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            ) : (
+              <LineChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
+                <XAxis
+                  dataKey="ts"
+                  type="number"
+                  scale="time"
+                  domain={domain}
+                  ticks={ticks}
+                  tickFormatter={(ts: number) => formatTick(ts, range)}
+                  tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
+                />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--chart-tooltip-bg, #ffffff)',
+                    border: '1px solid var(--chart-tooltip-border, #e2e8f0)',
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: 'var(--chart-tick, #64748b)' }}
+                  itemStyle={{ color: '#0ea5e9' }}
+                  labelFormatter={(ts) => formatLabel(Number(ts), range)}
+                  formatter={(value) => [`${value ?? ''}${displayUnit ? ` ${displayUnit}` : ''}`, '']}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#38bdf8"
+                  dot={false}
+                  strokeWidth={2}
+                  connectNulls={false}
+                />
+              </LineChart>
+            )}
           </ResponsiveContainer>
         )}
       </div>

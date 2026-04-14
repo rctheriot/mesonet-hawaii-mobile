@@ -30,6 +30,11 @@ export function convertValue(
   system: UnitSystem,
   variableId?: string
 ): ConvertedValue {
+  // Soil moisture — API returns fractional VWC (0–1), always display as %
+  if (variableId && /^SM_/.test(variableId)) {
+    return { value: value * 100, unit: '%' };
+  }
+
   if (system === 'metric') return { value, unit };
 
   switch (unit) {
