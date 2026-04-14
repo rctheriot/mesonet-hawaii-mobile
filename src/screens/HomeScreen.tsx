@@ -4,7 +4,7 @@ import { useQueryClient, useIsFetching } from '@tanstack/react-query';
 import { useAppContext } from '../context/AppContext';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
-import { ALLOWED_VARIABLES, convertValue, formatValue } from '../utils/units';
+import { ALLOWED_VARIABLES, convertValue, formatValue, groupByCategory } from '../utils/units';
 import { useStations, useStationMonitor, useVariables } from '../hooks/useStations';
 import { useLatestMeasurements } from '../hooks/useMeasurements';
 import { stationStatusKey, STATUS_DOT } from '../theme';
@@ -189,8 +189,12 @@ export default function HomeScreen() {
             className="flex-1 text-sm bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 appearance-none focus:outline-none focus:ring-2 focus:ring-sky-500"
           >
             <option value="">Auto (Air Temperature)</option>
-            {varOptions.map(v => (
-              <option key={v.id} value={v.id}>{v.label}</option>
+            {groupByCategory(varOptions, v => v.id).map(({ group, items }) => (
+              <optgroup key={group} label={group}>
+                {items.map(v => (
+                  <option key={v.id} value={v.id}>{v.label}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
           {homeVarId && (

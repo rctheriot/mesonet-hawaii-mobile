@@ -17,6 +17,62 @@ export const ALLOWED_VARIABLES = new Set([
   'RF_1_Tot300s', 'RFint_1_Max',
 ]);
 
+// ─── Variable grouping ────────────────────────────────────────────────────────
+
+export const GROUP_ORDER = [
+  'Rainfall', 'Temperature', 'Humidity', 'Radiation', 'Wind', 'Pressure', 'Soil',
+] as const;
+export type VariableGroup = typeof GROUP_ORDER[number];
+
+export const VARIABLE_GROUP: Record<string, VariableGroup> = {
+  // Rainfall
+  RF_1_Tot300s: 'Rainfall', RFint_1_Max:  'Rainfall',
+  // Temperature
+  Tair_1_Avg:   'Temperature', Tair_2_Avg: 'Temperature',
+  // Humidity
+  RH_1_Avg: 'Humidity', RH_2_Avg:   'Humidity',
+  VP_1_Avg: 'Humidity', VP_2_Avg:   'Humidity',
+  VPsat_1_Avg: 'Humidity', VPsat_2_Avg: 'Humidity',
+  VPD_1_Avg: 'Humidity',  VPD_2_Avg:   'Humidity',
+  // Radiation
+  SWin_1_Avg: 'Radiation', SWout_1_Avg: 'Radiation',
+  LWin_1_Avg: 'Radiation', LWout_1_Avg: 'Radiation',
+  SWnet_1_Avg: 'Radiation', LWnet_1_Avg: 'Radiation',
+  Rnet_1_Avg: 'Radiation', Albedo_1_Avg: 'Radiation',
+  Tsrf_1_Avg: 'Radiation', Tsky_1_Avg:  'Radiation',
+  // Wind
+  WS_1_Avg: 'Wind', WDrs_1_Avg: 'Wind',
+  // Pressure
+  P_1_Avg: 'Pressure', Psl_1_Avg: 'Pressure',
+  // Soil
+  Tsoil_1_Avg: 'Soil', Tsoil_2_Avg: 'Soil',
+  Tsoil_3_Avg: 'Soil', Tsoil_4_Avg: 'Soil',
+  SHFsrf_1_Avg: 'Soil',
+  SM_1_Avg: 'Soil', SM_2_Avg: 'Soil', SM_3_Avg: 'Soil',
+};
+
+// Groups an array of items into ordered category buckets.
+// Items whose variable ID has no group entry are placed in a trailing 'Other' bucket.
+export function groupByCategory<T>(
+  items: T[],
+  getVarId: (item: T) => string,
+): { group: string; items: T[] }[] {
+  const buckets = new Map<string, T[]>();
+  for (const g of GROUP_ORDER) buckets.set(g, []);
+  buckets.set('Other', []);
+
+  for (const item of items) {
+    const g = VARIABLE_GROUP[getVarId(item)] ?? 'Other';
+    buckets.get(g)!.push(item);
+  }
+
+  return Array.from(buckets.entries())
+    .filter(([, list]) => list.length > 0)
+    .map(([group, list]) => ({ group, items: list }));
+}
+
+// ─── Unit conversion ──────────────────────────────────────────────────────────
+
 interface ConvertedValue {
   value: number;
   unit: string;

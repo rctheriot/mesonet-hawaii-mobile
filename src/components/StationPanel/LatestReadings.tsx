@@ -1,6 +1,6 @@
 import { useLatestMeasurements } from '../../hooks/useMeasurements';
 import { useAppContext } from '../../context/AppContext';
-import { ALLOWED_VARIABLES, convertValue, formatValue } from '../../utils/units';
+import { ALLOWED_VARIABLES, convertValue, formatValue, groupByCategory } from '../../utils/units';
 
 interface LatestReadingsProps {
   stationId: string;
@@ -13,7 +13,6 @@ function relativeTime(timestamp: string): string {
   const mins  = Math.floor(diff / 60_000);
   const hours = Math.floor(diff / 3_600_000);
   const days  = Math.floor(diff / 86_400_000);
-
   if (mins  <  1) return 'just now';
   if (mins  < 60) return `${mins}m ago`;
   if (hours < 24) return `${hours}h ago`;
@@ -36,30 +35,46 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
     }
   }
   const readings = Array.from(latestByVar.values());
+  const groups = groupByCategory(readings, m => m.variable);
 
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {readings.map((m) => {
-        const converted = convertValue(Number(m.value), m.units ?? '', settings.units, m.variable);
-        return (
-          <button
-            key={m.variable}
-            onClick={() => onSelectVar(m.variable)}
-            className={`text-left p-3 rounded-lg border transition-colors ${
-              selectedVarId === m.variable
-                ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
-                : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
-            }`}
-          >
-            <div className="text-sm text-slate-500 dark:text-slate-400 truncate">{m.variable_display_name ?? m.variable}</div>
-            <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-              {formatValue(converted.value)}
-              {converted.unit && <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">{converted.unit}</span>}
-            </div>
-            <div className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">{relativeTime(m.timestamp)}</div>
-          </button>
-        );
-      })}
+    <div className="space-y-4">
+      {groups.map(({ group, items }) => (
+        <div key={group}>
+          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+            {group}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {items.map((m) => {
+              const converted = convertValue(Number(m.value), m.units ?? '', settings.units, m.variable);
+              return (
+                <button
+                  key={m.variable}
+                  onClick={() => onSelectVar(m.variable)}
+                  className={`text-left p-3 rounded-lg border transition-colors ${
+                    selectedVarId === m.variable
+                      ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
+                      : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
+                  }`}
+                >
+                  <div className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                    {m.variable_display_name ?? m.variable}
+                  </div>
+                  <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    {formatValue(converted.value)}
+                    {converted.unit && (
+                      <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">{converted.unit}</span>
+                    )}
+                  </div>
+                  <div className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
+                    {relativeTime(m.timestamp)}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
