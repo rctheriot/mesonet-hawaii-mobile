@@ -201,7 +201,7 @@ export default function StationMap({
   }, [panToCoords]);
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full isolate">
       {/* Leaflet renders into this div */}
       <div ref={containerRef} className="w-full h-full" />
 
