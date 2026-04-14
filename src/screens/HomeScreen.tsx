@@ -64,7 +64,7 @@ function StationCard({ station, monitorData, varId, onClick }: StationCardProps)
       {/* Station name + island + last updated */}
       <div className="flex-1 min-w-0">
         <p className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate leading-tight">
-          {station.name ?? station.station_id}
+          {station.full_name ?? station.name ?? station.station_id}
         </p>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
           {station.island ?? 'Hawaii'}

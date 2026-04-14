@@ -63,7 +63,7 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
       const order: Record<string, number> = { active: 0, inactive: 1, planned: 2, unknown: 3 };
       const aOrd = order[stationStatusKey(a, monitorData)] ?? 3;
       const bOrd = order[stationStatusKey(b, monitorData)] ?? 3;
-      return aOrd !== bOrd ? aOrd - bOrd : (a.name ?? '').localeCompare(b.name ?? '');
+      return aOrd !== bOrd ? aOrd - bOrd : (a.full_name ?? a.name ?? '').localeCompare(b.full_name ?? b.name ?? '');
     });
   }, [filtered, monitorData, sortBy, coords]);
 
@@ -169,7 +169,7 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
               <div className={`w-3 h-3 rounded-full flex-shrink-0 ${STATUS_DOT[key]}`} />
               <div className="flex-1 min-w-0">
                 <div className="text-base font-medium text-slate-900 dark:text-slate-100 truncate">
-                  {station.name ?? station.station_id}
+                  {station.full_name ?? station.name ?? station.station_id}
                 </div>
                 <div className="text-sm text-slate-400 dark:text-slate-500">
                   {station.island ?? 'Hawaii'} · {station.station_id}

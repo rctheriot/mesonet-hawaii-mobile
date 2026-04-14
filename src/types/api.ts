@@ -1,6 +1,7 @@
 export interface Station {
   station_id: string;
   name: string;
+  full_name?: string;   // Includes proper Hawaiian diacriticals when available
   lat: number;
   lng: number;
   elevation?: number;
