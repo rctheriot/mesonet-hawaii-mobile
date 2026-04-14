@@ -24,9 +24,9 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
   const { data, isLoading, isError } = useLatestMeasurements(stationId);
   const { settings } = useAppContext();
 
-  if (isLoading) return <p className="text-slate-500 dark:text-slate-400 text-sm">Loading readings…</p>;
-  if (isError)   return <p className="text-red-500 dark:text-red-400 text-sm">Failed to load readings.</p>;
-  if (!data || data.length === 0) return <p className="text-slate-500 dark:text-slate-400 text-sm">No readings available.</p>;
+  if (isLoading) return <p className="text-slate-500 dark:text-slate-400 text-base">Loading readings…</p>;
+  if (isError)   return <p className="text-red-500 dark:text-red-400 text-base">Failed to load readings.</p>;
+  if (!data || data.length === 0) return <p className="text-slate-500 dark:text-slate-400 text-base">No readings available.</p>;
 
   // Deduplicate and filter to whitelisted variables only
   const latestByVar = new Map<string, (typeof data)[0]>();
@@ -45,18 +45,18 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
           <button
             key={m.variable}
             onClick={() => onSelectVar(m.variable)}
-            className={`text-left p-2 rounded-lg border transition-colors ${
+            className={`text-left p-3 rounded-lg border transition-colors ${
               selectedVarId === m.variable
                 ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
                 : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
             }`}
           >
-            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{m.variable_display_name ?? m.variable}</div>
-            <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
+            <div className="text-sm text-slate-500 dark:text-slate-400 truncate">{m.variable_display_name ?? m.variable}</div>
+            <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               {formatValue(converted.value)}
-              {converted.unit && <span className="text-xs text-slate-500 dark:text-slate-400 ml-1">{converted.unit}</span>}
+              {converted.unit && <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">{converted.unit}</span>}
             </div>
-            <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{relativeTime(m.timestamp)}</div>
+            <div className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">{relativeTime(m.timestamp)}</div>
           </button>
         );
       })}

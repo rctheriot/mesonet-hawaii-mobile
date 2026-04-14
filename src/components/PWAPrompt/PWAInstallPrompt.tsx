@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAppContext } from '../../context/AppContext';
 
 type Platform = 'ios' | 'android' | null;
 
@@ -19,13 +20,13 @@ function isStandalone(): boolean {
 const STORAGE_KEY = 'pwa-prompt-dismissed';
 
 export default function PWAInstallPrompt() {
+  const { installPromptOpen, closeInstallPrompt } = useAppContext();
   const [visible, setVisible] = useState(false);
   const [platform, setPlatform] = useState<Platform>(null);
-  // Android deferred install prompt
   const [deferredPrompt, setDeferredPrompt] = useState<Event & { prompt: () => void } | null>(null);
 
+  // Auto-show logic: fires once on mount for mobile devices
   useEffect(() => {
-    // Don't show if already installed or user dismissed
     if (isStandalone()) return;
     if (sessionStorage.getItem(STORAGE_KEY)) return;
 
@@ -40,22 +41,30 @@ export default function PWAInstallPrompt() {
         setVisible(true);
       };
       window.addEventListener('beforeinstallprompt', handler);
-      // Show manual instructions after a short delay if native prompt doesn't fire
       const timer = setTimeout(() => setVisible(true), 2000);
       return () => {
         window.removeEventListener('beforeinstallprompt', handler);
         clearTimeout(timer);
       };
     } else {
-      // iOS — always show manual instructions
       const timer = setTimeout(() => setVisible(true), 1500);
       return () => clearTimeout(timer);
     }
   }, []);
 
+  // Force-open from Help modal — bypasses sessionStorage check
+  useEffect(() => {
+    if (installPromptOpen) {
+      const p = detectPlatform() ?? 'ios'; // default to iOS instructions on desktop
+      setPlatform(p);
+      setVisible(true);
+    }
+  }, [installPromptOpen]);
+
   function dismiss() {
     sessionStorage.setItem(STORAGE_KEY, '1');
     setVisible(false);
+    closeInstallPrompt();
   }
 
   async function handleAndroidInstall() {
@@ -68,8 +77,8 @@ export default function PWAInstallPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center pointer-events-none px-4 pb-6">
-      <div className="pointer-events-auto w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm bg-slate-900/40">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div className="flex items-center gap-2">
