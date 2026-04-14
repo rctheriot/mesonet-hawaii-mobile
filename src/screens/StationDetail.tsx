@@ -67,7 +67,7 @@ export default function StationDetail() {
   if (stationsLoading) {
     return (
       <div className="flex items-center justify-center w-full h-full bg-white dark:bg-slate-950">
-        <p className="text-slate-400 text-sm">Loading…</p>
+        <p className="text-slate-400 text-base">Loading…</p>
       </div>
     );
   }
@@ -75,10 +75,10 @@ export default function StationDetail() {
   if (!station) {
     return (
       <div className="flex flex-col items-center justify-center w-full h-full bg-white dark:bg-slate-950 gap-4">
-        <p className="text-slate-500 dark:text-slate-400 text-sm">Station not found.</p>
+        <p className="text-slate-500 dark:text-slate-400 text-base">Station not found.</p>
         <button
           onClick={() => navigate('/')}
-          className="px-4 py-2 rounded-xl bg-sky-500 text-white text-sm font-medium"
+          className="px-4 py-2 rounded-xl bg-sky-500 text-white text-base font-medium"
         >
           Back to Home
         </button>
@@ -92,7 +92,7 @@ export default function StationDetail() {
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800">
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-1 text-sky-500 dark:text-sky-400 text-sm font-medium hover:text-sky-600 dark:hover:text-sky-300 transition-colors"
+          className="flex items-center gap-1 text-sky-500 dark:text-sky-400 text-base font-medium hover:text-sky-600 dark:hover:text-sky-300 transition-colors"
           aria-label="Back to home"
         >
           ← Home
@@ -100,10 +100,10 @@ export default function StationDetail() {
         <button
           onClick={() => queryClient.invalidateQueries()}
           disabled={isFetching}
-          className="w-7 h-7 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors disabled:opacity-40"
+          className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors disabled:opacity-40"
           aria-label="Refresh data"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isFetching ? 'animate-spin' : ''}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isFetching ? 'animate-spin' : ''}>
             <polyline points="23 4 23 10 17 10"/>
             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
           </svg>
@@ -111,7 +111,7 @@ export default function StationDetail() {
         {/* Save / Unsave station */}
         <button
           onClick={() => stationId && toggleFavorite(stationId)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
             isFavorite
               ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50'
               : 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50'
@@ -129,19 +129,19 @@ export default function StationDetail() {
         <div className="px-5 pt-6 pb-5 border-b border-slate-100 dark:border-slate-800">
           {/* Station name */}
           <div className="flex items-start justify-between gap-3 mb-1">
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
               {station.name ?? station.station_id}
             </h1>
           </div>
 
           {/* Island + status badge */}
           <div className="flex items-center gap-2 mb-4">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{station.island ?? 'Hawaii'}</p>
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[statusKey]}`}>
+            <p className="text-base text-slate-500 dark:text-slate-400">{station.island ?? 'Hawaii'}</p>
+            <span className={`text-sm px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[statusKey]}`}>
               {STATUS_LABEL[statusKey]}
             </span>
             {isStale && (
-              <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700">
+              <span className="text-sm font-medium px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700">
                 Stale Data
               </span>
             )}
@@ -149,7 +149,7 @@ export default function StationDetail() {
 
           {/* Big primary reading */}
           {readingsLoading ? (
-            <p className="text-slate-400 text-sm">Loading readings…</p>
+            <p className="text-slate-400 text-base">Loading readings…</p>
           ) : heroReading ? (
             <div>
               {(() => {
@@ -160,17 +160,17 @@ export default function StationDetail() {
                       {formatValue(c.value)}
                     </span>
                     {c.unit && (
-                      <span className="text-xl text-slate-500 dark:text-slate-400 mb-1">{c.unit}</span>
+                      <span className="text-2xl text-slate-500 dark:text-slate-400 mb-1">{c.unit}</span>
                     )}
                   </div>
                 );
               })()}
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-base text-slate-500 dark:text-slate-400 mt-1">
                 {heroReading.variable_display_name ?? heroReading.variable}
               </p>
             </div>
           ) : (
-            <p className="text-slate-400 dark:text-slate-600 text-sm">No readings available.</p>
+            <p className="text-slate-400 dark:text-slate-600 text-base">No readings available.</p>
           )}
         </div>
 
@@ -180,7 +180,7 @@ export default function StationDetail() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3 py-1.5 text-sm font-medium capitalize border-b-2 transition-colors -mb-px ${
+              className={`px-4 py-2 text-base font-medium capitalize border-b-2 transition-colors -mb-px ${
                 tab === t
                   ? 'border-sky-500 text-sky-500 dark:text-sky-400'
                   : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
@@ -195,7 +195,7 @@ export default function StationDetail() {
           <div className="px-4 pt-4 pb-8 space-y-6">
             {/* ── History chart ─────────────────────────────────────────────── */}
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
                 {selectedVarId
                   ? (readings.find(m => m.variable === selectedVarId)?.variable_display_name ?? selectedVarId)
                   : 'History'}
@@ -205,13 +205,13 @@ export default function StationDetail() {
 
             {/* ── Readings grid ──────────────────────────────────────────────── */}
             <div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
                 Current Readings
               </p>
               {readingsLoading ? (
-                <p className="text-slate-400 text-sm">Loading…</p>
+                <p className="text-slate-400 text-base">Loading…</p>
               ) : readings.length === 0 ? (
-                <p className="text-slate-400 dark:text-slate-600 text-sm">No readings available.</p>
+                <p className="text-slate-400 dark:text-slate-600 text-base">No readings available.</p>
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   {readings.map(m => {
@@ -220,18 +220,18 @@ export default function StationDetail() {
                       <button
                         key={m.variable}
                         onClick={() => setSelectedVarId(v => v === m.variable ? null : m.variable)}
-                        className={`text-left p-3 rounded-xl border transition-colors ${
+                        className={`text-left p-4 rounded-xl border transition-colors ${
                           selectedVarId === m.variable
                             ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
                             : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
                         }`}
                       >
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
                           {m.variable_display_name ?? m.variable}
                         </p>
-                        <p className="text-lg font-semibold text-slate-900 dark:text-slate-100 mt-0.5">
+                        <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 mt-0.5">
                           {formatValue(c.value)}
-                          {c.unit && <span className="text-xs text-slate-400 ml-1">{c.unit}</span>}
+                          {c.unit && <span className="text-sm text-slate-400 ml-1">{c.unit}</span>}
                         </p>
                       </button>
                     );

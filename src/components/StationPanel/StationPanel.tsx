@@ -101,26 +101,26 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
       {/* Header */}
       <div className="flex items-start justify-between px-4 pb-2 flex-shrink-0">
         <div className="flex items-start gap-2.5 min-w-0">
-          <div className={`mt-1.5 w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[statusKey]}`} />
+          <div className={`mt-1.5 w-3 h-3 rounded-full flex-shrink-0 ${STATUS_DOT[statusKey]}`} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 leading-tight truncate">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 leading-tight truncate">
                 {station.name ?? station.station_id}
               </h2>
               {isStale && (
-                <span className="flex-shrink-0 text-xs font-medium px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700">
+                <span className="flex-shrink-0 text-sm font-medium px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700">
                   Stale Data
                 </span>
               )}
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{station.island ?? 'Hawaii'}</p>
+            <p className="text-base text-slate-500 dark:text-slate-400">{station.island ?? 'Hawaii'}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {onToggleFavorite && (
             <button
               onClick={() => onToggleFavorite(station.station_id)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-semibold border transition-colors ${
                 isFavorite
                   ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50'
                   : 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50'
@@ -147,7 +147,7 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-3 py-1.5 text-sm font-medium capitalize border-b-2 transition-colors -mb-px ${
+            className={`px-4 py-2 text-base font-medium capitalize border-b-2 transition-colors -mb-px ${
               tab === t
                 ? 'border-sky-500 text-sky-500 dark:text-sky-400'
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
@@ -165,7 +165,7 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
             {/* Chart */}
             <div ref={chartRef}>
               {selectedVarName && (
-                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">
+                <p className="text-sm text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-1">
                   {selectedVarName}
                 </p>
               )}

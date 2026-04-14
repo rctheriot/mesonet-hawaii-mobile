@@ -79,7 +79,7 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
             <button
               key={opt.value}
               onClick={() => setStatusFilter(opt.value)}
-              className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 statusFilter === opt.value
                   ? 'bg-sky-500 text-white'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -90,7 +90,7 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
           ))}
           <button
             onClick={() => setFavoritesOnly(f => !f)}
-            className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               favoritesOnly
                 ? 'bg-yellow-400 text-white'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -102,11 +102,11 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
 
         {/* Row 2: Sort toggle + island dropdown */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">Sort:</span>
+          <span className="text-sm text-slate-400 dark:text-slate-500 flex-shrink-0">Sort:</span>
           <div className="flex gap-1.5">
             <button
               onClick={() => setSortBy('default')}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 sortBy === 'default'
                   ? 'bg-slate-700 dark:bg-slate-300 text-white dark:text-slate-900'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -125,7 +125,7 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
                 }
               }}
               disabled={geoLoading}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
+              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors disabled:opacity-50 ${
                 sortBy === 'nearme'
                   ? 'bg-slate-700 dark:bg-slate-300 text-white dark:text-slate-900'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
@@ -137,7 +137,7 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
           <select
             value={islandFilter}
             onChange={e => setIslandFilter(e.target.value)}
-            className="ml-auto flex-shrink-0 text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            className="ml-auto flex-shrink-0 text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500"
           >
             <option value="all">All Islands</option>
             {islands.map(island => (
@@ -145,7 +145,7 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
             ))}
           </select>
           {geoError && sortBy === 'nearme' && (
-            <p className="text-xs text-red-500 dark:text-red-400 truncate">{geoError}</p>
+            <p className="text-sm text-red-500 dark:text-red-400 truncate">{geoError}</p>
           )}
         </div>
       </div>
@@ -153,7 +153,7 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
       {/* Station rows */}
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
         {sorted.length === 0 && (
-          <p className="text-center text-sm text-slate-400 dark:text-slate-500 py-8">No stations match this filter.</p>
+          <p className="text-center text-base text-slate-400 dark:text-slate-500 py-8">No stations match this filter.</p>
         )}
         {sorted.map(station => {
           const key = stationStatusKey(station, monitorData);
@@ -164,27 +164,27 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
             <button
               key={station.station_id}
               onClick={() => onSelectStation(station.station_id)}
-              className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+              className="w-full text-left px-4 py-4 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
             >
-              <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[key]}`} />
+              <div className={`w-3 h-3 rounded-full flex-shrink-0 ${STATUS_DOT[key]}`} />
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                <div className="text-base font-medium text-slate-900 dark:text-slate-100 truncate">
                   {station.name ?? station.station_id}
                 </div>
-                <div className="text-xs text-slate-400 dark:text-slate-500">
+                <div className="text-sm text-slate-400 dark:text-slate-500">
                   {station.island ?? 'Hawaii'} · {station.station_id}
                 </div>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 {favorites.has(station.station_id) && (
-                  <span className="text-xs font-medium text-sky-500 dark:text-sky-400">Saved</span>
+                  <span className="text-sm font-medium text-sky-500 dark:text-sky-400">Saved</span>
                 )}
                 {distance != null ? (
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
                     {distance.toFixed(1)} km
                   </span>
                 ) : (
-                  <span className={`text-xs font-medium ${STATUS_TEXT[key]}`}>
+                  <span className={`text-sm font-medium ${STATUS_TEXT[key]}`}>
                     {STATUS_LABEL[key]}
                   </span>
                 )}

@@ -9,16 +9,12 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   const { darkMode, units } = settings;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm bg-slate-900/40">
+      {/* Backdrop tap to close */}
+      <div className="absolute inset-0" onClick={onClose} />
 
       {/* Sheet */}
-      <div className="relative w-full sm:max-w-sm bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700">
-        {/* Handle (mobile) */}
-        <div className="flex justify-center pt-2 pb-1 sm:hidden">
-          <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
-        </div>
+      <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-slate-700">
@@ -80,7 +76,6 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
               ))}
             </div>
           </div>
-
 
         </div>
       </div>
