@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
@@ -18,13 +18,92 @@ const RANGES: { label: string; value: TimeRange }[] = [
   { label: '7d', value: '7d' },
 ];
 
+// Generate evenly-spaced tick timestamps for a given range.
+// These are computed from the fixed range window, independent of data density.
+function generateTicks(range: TimeRange, now: number): number[] {
+  if (range === '1h') {
+    const start = now - 60 * 60 * 1000;
+    // Every 15 minutes: 0, 15, 30, 45, 60
+    return [0, 15, 30, 45, 60].map(m => start + m * 60 * 1000);
+  }
+  if (range === '24h') {
+    const start = now - 24 * 60 * 60 * 1000;
+    // Every 4 hours: 0, 4, 8, 12, 16, 20, 24
+    return [0, 4, 8, 12, 16, 20, 24].map(h => start + h * 60 * 60 * 1000);
+  }
+  // 7d: one tick per calendar midnight within the range
+  const ticks: number[] = [];
+  const rangeStart = now - 7 * 24 * 60 * 60 * 1000;
+  // Start from today's midnight and walk back 8 days
+  const todayMidnight = new Date(now);
+  todayMidnight.setHours(0, 0, 0, 0);
+  for (let i = 0; i <= 8; i++) {
+    const t = todayMidnight.getTime() - i * 24 * 60 * 60 * 1000;
+    if (t >= rangeStart && t <= now) ticks.unshift(t);
+  }
+  return ticks;
+}
+
+// Format a tick timestamp for display on the X-axis.
+function formatTick(ts: number, range: TimeRange): string {
+  const d = new Date(ts);
+  if (range === '1h') {
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+  if (range === '24h') {
+    return `${String(d.getHours()).padStart(2, '0')}:00`;
+  }
+  // 7d: "Wed 1"
+  return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
+}
+
+// Format the tooltip label (shown at the top of the hover popup).
+function formatLabel(ts: number, range: TimeRange): string {
+  const d = new Date(ts);
+  if (range === '1h' || range === '24h') {
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  }
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
 export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
   const [range, setRange] = useState<TimeRange>('24h');
   const { data, isLoading, isError } = useHistoricalMeasurements(stationId, varId, range);
   const { settings } = useAppContext();
 
+  // Snapshot "now" once per render so domain and ticks stay consistent.
+  const now = useMemo(() => Date.now(), [range]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const rangeMs: Record<TimeRange, number> = {
+    '1h':  1 * 60 * 60 * 1000,
+    '24h': 24 * 60 * 60 * 1000,
+    '7d':  7 * 24 * 60 * 60 * 1000,
+  };
+
+  const domain: [number, number] = [now - rangeMs[range], now];
+  const ticks = useMemo(() => generateTicks(range, now), [range, now]);
+
+  const rawUnits = data?.[0]?.units ?? '';
+  const displayUnit = data?.[0]
+    ? convertValue(0, rawUnits, settings.units, varId ?? undefined).unit
+    : rawUnits;
+
+  // chartData uses numeric epoch (ts) as the X key — this enables Recharts to interpolate
+  // the tooltip position smoothly across the full axis range rather than snapping to data points.
+  const chartData = useMemo(() => {
+    return (data ?? [])
+      .slice()
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .filter(m => m.value != null)
+      .map(m => ({
+        ts: new Date(m.timestamp).getTime(),
+        value: convertValue(Number(m.value), rawUnits, settings.units, varId ?? undefined).value,
+      }));
+  }, [data, rawUnits, settings.units, varId]);
+
   // Always render the same-height shell when no variable is selected.
-  // This prevents the readings grid from jumping up/down as the chart mounts/unmounts.
   if (!varId) {
     return (
       <div className="space-y-2">
@@ -41,30 +120,6 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
       </div>
     );
   }
-
-  function formatTime(ts: string): string {
-    const d = new Date(ts);
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    if (range === '1h')  return `${hh}:${mm}`;
-    if (range === '24h') return `${hh}:00`;
-    return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }).toUpperCase();
-  }
-
-  const rawUnits = data?.[0]?.units ?? '';
-  // Derive the display unit by converting a sample value — we only need the unit string
-  const displayUnit = data?.[0]
-    ? convertValue(0, rawUnits, settings.units, varId ?? undefined).unit
-    : rawUnits;
-
-  const chartData = (data ?? [])
-    .slice()
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    .filter(m => m.value != null)
-    .map(m => ({
-      time: formatTime(m.timestamp),
-      value: convertValue(Number(m.value), rawUnits, settings.units, varId ?? undefined).value,
-    }));
 
   return (
     <div className="space-y-2">
@@ -101,23 +156,30 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
           </div>
         )}
         {!isLoading && chartData.length > 0 && (
-          // height must be a fixed px value (not "100%") because the parent div has no
-          // intrinsic height in a flex context. minWidth={0} prevents overflow in narrow panels.
           <ResponsiveContainer width="100%" height={160} minWidth={0}>
             <LineChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
               <XAxis
-                dataKey="time"
+                dataKey="ts"
+                type="number"
+                scale="time"
+                domain={domain}
+                ticks={ticks}
+                tickFormatter={(ts: number) => formatTick(ts, range)}
                 tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
-                interval="preserveStartEnd"
               />
               <YAxis
                 tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
               />
               <Tooltip
-                contentStyle={{ backgroundColor: 'var(--chart-tooltip-bg, #ffffff)', border: '1px solid var(--chart-tooltip-border, #e2e8f0)', fontSize: 12 }}
+                contentStyle={{
+                  backgroundColor: 'var(--chart-tooltip-bg, #ffffff)',
+                  border: '1px solid var(--chart-tooltip-border, #e2e8f0)',
+                  fontSize: 12,
+                }}
                 labelStyle={{ color: 'var(--chart-tick, #64748b)' }}
                 itemStyle={{ color: '#0ea5e9' }}
+                labelFormatter={(ts) => formatLabel(Number(ts), range)}
                 formatter={(value) => [`${value ?? ''}${displayUnit ? ` ${displayUnit}` : ''}`, '']}
               />
               <Line
@@ -126,6 +188,7 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
                 stroke="#38bdf8"
                 dot={false}
                 strokeWidth={2}
+                connectNulls={false}
               />
             </LineChart>
           </ResponsiveContainer>
