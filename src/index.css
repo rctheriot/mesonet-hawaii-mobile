@@ -54,11 +54,16 @@ html, body, #root {
 
 /* Attribution — dark mode */
 .dark .leaflet-control-attribution {
-  background: rgba(30, 41, 59, 0.9);
-  color: #cbd5e1;
-  border: 1px solid rgba(71, 85, 105, 0.6);
+  background: rgba(30, 41, 59, 0.92) !important;
+  color: #cbd5e1 !important;
+  box-shadow: none !important;
+  border: 1px solid rgba(71, 85, 105, 0.5);
   border-radius: 4px;
 }
 .dark .leaflet-control-attribution a {
-  color: #38bdf8;
+  color: #38bdf8 !important;
+}
+/* Leaflet logo svg inside attribution */
+.dark .leaflet-control-attribution svg path {
+  fill: #38bdf8 !important;
 }
