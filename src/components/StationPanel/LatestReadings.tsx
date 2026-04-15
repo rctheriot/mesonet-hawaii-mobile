@@ -61,9 +61,7 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
                   }`}
                 >
                   <div className="text-sm text-slate-500 dark:text-slate-400 truncate">
-                    {wind
-                      ? `Wind${wind.dirDeg != null ? ` · ${Math.round(wind.dirDeg)}°` : ''}`
-                      : (m.variable_display_name ?? m.variable)}
+                    {wind ? 'Wind' : (m.variable_display_name ?? m.variable)}
                   </div>
                   <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                     {wind?.compass && (

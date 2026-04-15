@@ -4,7 +4,7 @@ import { useQueryClient, useIsFetching } from '@tanstack/react-query';
 import { useAppContext } from '../context/AppContext';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
-import { ALLOWED_VARIABLES, convertValue, formatValue, groupByCategory } from '../utils/units';
+import { ALLOWED_VARIABLES, convertValue, formatValue, groupByCategory, mergeWindReadings } from '../utils/units';
 import { useStations, useStationMonitor, useVariables } from '../hooks/useStations';
 import { useLatestMeasurements } from '../hooks/useMeasurements';
 import { stationStatusKey, STATUS_DOT } from '../theme';
@@ -24,19 +24,29 @@ function StationCard({ station, monitorData, varId, onClick }: StationCardProps)
   const { settings } = useAppContext();
   const statusKey = stationStatusKey(station, monitorData);
 
-  // Find the target reading from whitelisted variables only
+  // Deduplicate and filter — same logic as LatestReadings
+  const allReadings = useMemo(() => {
+    if (!measurements) return [];
+    const seen = new Map<string, typeof measurements[0]>();
+    for (const m of measurements) {
+      if (ALLOWED_VARIABLES.has(m.variable) && !seen.has(m.variable) && m.value != null)
+        seen.set(m.variable, m);
+    }
+    return Array.from(seen.values());
+  }, [measurements]);
+
+  const { windReadings } = useMemo(() => mergeWindReadings(allReadings), [allReadings]);
+
   const reading = useMemo(() => {
-    if (!measurements || measurements.length === 0) return null;
-    const allowed = measurements.filter(m => ALLOWED_VARIABLES.has(m.variable) && m.value != null);
-    if (varId) return allowed.find(m => m.variable === varId) ?? null;
-    // Auto-select: prefer air temp, otherwise first whitelisted reading
-    return (
-      allowed.find(m =>
-        m.variable_display_name?.toLowerCase().includes('air temp') ||
-        m.variable?.toLowerCase().includes('tair')
-      ) ?? allowed[0] ?? null
-    );
-  }, [measurements, varId]);
+    if (varId) return allReadings.find(m => m.variable === varId) ?? null;
+    // Auto-select: prefer air temp only — no fallback to other variables
+    return allReadings.find(m =>
+      m.variable_display_name?.toLowerCase().includes('air temp') ||
+      m.variable?.toLowerCase().includes('tair')
+    ) ?? null;
+  }, [allReadings, varId]);
+
+  const windInfo = reading ? (windReadings.find(w => w.speedMeasurement.variable === reading.variable) ?? null) : null;
 
   const converted = reading?.value != null
     ? convertValue(Number(reading.value), reading.units ?? '', settings.units, reading.variable)
@@ -86,6 +96,7 @@ function StationCard({ station, monitorData, varId, onClick }: StationCardProps)
         {converted != null ? (
           <>
             <span className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
+              {windInfo?.compass && <span className="mr-1">{windInfo.compass}</span>}
               {formatValue(converted.value, reading?.variable)}
             </span>
             {converted.unit && (
@@ -93,10 +104,10 @@ function StationCard({ station, monitorData, varId, onClick }: StationCardProps)
             )}
           </>
         ) : (
-          <span className="text-3xl font-bold text-slate-300 dark:text-slate-600 leading-none">—</span>
+          <span className="text-2xl font-medium text-slate-300 dark:text-slate-600 leading-none">No value</span>
         )}
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
-          {reading?.variable_display_name ?? (varId ? '' : 'No data')}
+          {windInfo != null ? 'Wind' : (reading?.variable_display_name ?? '')}
         </p>
       </div>
     </button>
@@ -123,11 +134,16 @@ export default function HomeScreen() {
       .filter((s): s is Station => s != null);
   }, [favorites, stations]);
 
-  // Variable options for the selector — only whitelisted variables
+  // Variable options for the selector — only whitelisted variables.
+  // Wind direction is excluded (it's merged into the wind speed card).
+  // Wind speed is relabeled "Wind" since direction is always shown alongside it.
   const varOptions = useMemo(() => {
     return variables
-      .filter(v => ALLOWED_VARIABLES.has(v.standard_name))
-      .map(v => ({ id: v.standard_name, label: v.display_name }));
+      .filter(v => ALLOWED_VARIABLES.has(v.standard_name) && !/^WDrs_/.test(v.standard_name))
+      .map(v => ({
+        id: v.standard_name,
+        label: /^WS_/.test(v.standard_name) ? 'Wind' : v.display_name,
+      }));
   }, [variables]);
 
   // The currently selected variable display name (for the selector label)

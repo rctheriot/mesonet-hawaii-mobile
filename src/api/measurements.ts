@@ -6,7 +6,7 @@ export async function fetchLatestMeasurements(stationId: string): Promise<Measur
     '/mesonet/db/measurements',
     {
       station_ids: stationId,
-      limit: 50,
+      limit: 200,
       join_metadata: true,
       local_tz: true,
       location: 'hawaii',

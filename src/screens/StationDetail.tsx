@@ -236,9 +236,7 @@ export default function StationDetail() {
                                 }`}
                               >
                                 <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
-                                  {wind
-                                    ? `Wind${wind.dirDeg != null ? ` · ${Math.round(wind.dirDeg)}°` : ''}`
-                                    : (m.variable_display_name ?? m.variable)}
+                                  {wind ? 'Wind' : (m.variable_display_name ?? m.variable)}
                                 </p>
                                 <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 mt-0.5">
                                   {wind?.compass && (
