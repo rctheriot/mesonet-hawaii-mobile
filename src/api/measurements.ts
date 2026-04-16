@@ -16,6 +16,51 @@ export async function fetchLatestMeasurements(stationId: string): Promise<Measur
   return Object.values(data);
 }
 
+// Fetches the latest measurement for a single variable across all Hawaii stations.
+// Returns at most one entry per station (the most recent).
+export async function fetchMapMeasurements(varId: string): Promise<Measurement[]> {
+  const { data } = await apiGet<Measurement[] | Record<string, Measurement>>(
+    '/mesonet/db/measurements',
+    {
+      var_ids: varId,
+      limit: 2000,
+      join_metadata: true,
+      local_tz: true,
+      location: 'hawaii',
+    }
+  );
+  const raw = Array.isArray(data) ? data : Object.values(data);
+  const latest = new Map<string, Measurement>();
+  for (const m of raw) {
+    if (!m.station_id || m.value == null) continue;
+    const existing = latest.get(m.station_id);
+    if (!existing || new Date(m.timestamp) > new Date(existing.timestamp)) {
+      latest.set(m.station_id, m);
+    }
+  }
+  return Array.from(latest.values());
+}
+
+// Fetches 24hr of RF_1_Tot300s for all stations — caller sums per station_id.
+export async function fetchMapRainfall24hr(): Promise<Measurement[]> {
+  const now = new Date();
+  const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const { data } = await apiGet<Measurement[] | Record<string, Measurement>>(
+    '/mesonet/db/measurements',
+    {
+      var_ids: 'RF_1_Tot300s',
+      start_date: start.toISOString(),
+      end_date: now.toISOString(),
+      join_metadata: true,
+      local_tz: true,
+      location: 'hawaii',
+      limit: 50000,
+    }
+  );
+  if (Array.isArray(data)) return data;
+  return Object.values(data);
+}
+
 export async function fetchHistoricalMeasurements(
   stationId: string,
   varId: string,

@@ -1,33 +1,106 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import StationMap from '../components/Map/StationMap';
+import MapLegend, { type MapMode } from '../components/Map/MapLegend';
 import StationPanel from '../components/StationPanel/StationPanel';
 import StationList from '../components/StationList/StationList';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
 import { useStations, useStationMonitor } from '../hooks/useStations';
+import { useMapMeasurements, useMapRainfall24hr } from '../hooks/useMeasurements';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useAppContext } from '../context/AppContext';
+import { convertValue } from '../utils/units';
+import { tempToHex, windToHex, rhToHex, rainToHex, smToHex, swToHex } from '../utils/mapColor';
 import type { Station } from '../types/api';
 
 type View = 'map' | 'list';
 
+const MAP_MODE_OPTIONS: { mode: MapMode; label: string }[] = [
+  { mode: 'status',        label: 'Status'         },
+  { mode: 'Tair_1_Avg',   label: 'Air Temp'       },
+  { mode: 'RH_1_Avg',     label: 'Humidity'       },
+  { mode: 'SWin_1_Avg',   label: 'Radiation'      },
+  { mode: 'RF_1_Tot300s', label: 'Rainfall (24hr)'},
+  { mode: 'SM_1_Avg',     label: 'Soil Moisture'  },
+  { mode: 'Tsoil_1_Avg',  label: 'Soil Temp'      },
+  { mode: 'WS_1_Avg',     label: 'Wind'           },
+];
+
 export default function ExploreScreen() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { settings, updateSettings, favorites, toggleFavorite, openInstallPrompt } = useAppContext();
   const { darkMode, view, lastStationId, panelHeightRatio } = settings;
-
-  const { data: stations = [], isLoading, isError } = useStations();
-  const { data: monitorData = {} } = useStationMonitor();
-  const { coords, loading: geoLoading, error: geoError, requestLocation } = useGeolocation();
 
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedStationId, setSelectedStationId] = useState<string | null>(lastStationId);
+  const [mapMode, setMapMode] = useState<MapMode>('Tair_1_Avg');
+  const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const { data: stations = [], isLoading, isError } = useStations();
+  const { data: monitorData = {} } = useStationMonitor();
+  // Rainfall uses its own 24hr-sum hook; all other variable modes use the latest-value hook.
+  const { data: varData }      = useMapMeasurements(mapMode !== 'status' && mapMode !== 'RF_1_Tot300s' ? mapMode : null);
+  const { data: rainfallData } = useMapRainfall24hr(mapMode === 'RF_1_Tot300s');
+  const { data: windDirData }  = useMapMeasurements(mapMode === 'WS_1_Avg' ? 'WDrs_1_Avg' : null);
+  const { coords, loading: geoLoading, error: geoError, requestLocation } = useGeolocation();
+
+  // For rainfall mode use the 24hr-sum data; otherwise use the latest-value data.
+  const activeVarData = mapMode === 'RF_1_Tot300s' ? rainfallData : varData;
+
+  const varColors = useMemo(() => {
+    if (!activeVarData || mapMode === 'status') return undefined;
+    const map = new Map<string, string>();
+    for (const [id, { value }] of activeVarData) {
+      let color: string;
+      if      (mapMode === 'Tair_1_Avg')  color = tempToHex(value);
+      else if (mapMode === 'Tsoil_1_Avg') color = tempToHex(value);
+      else if (mapMode === 'WS_1_Avg')    color = windToHex(value);
+      else if (mapMode === 'RH_1_Avg')    color = rhToHex(value);
+      else if (mapMode === 'SM_1_Avg')    color = smToHex(value);
+      else if (mapMode === 'SWin_1_Avg')  color = swToHex(value);
+      else                                color = rainToHex(value);
+      map.set(id, color);
+    }
+    return map;
+  }, [activeVarData, mapMode]);
+
+  const varArrows = useMemo(() => {
+    if (!windDirData || mapMode !== 'WS_1_Avg') return undefined;
+    const map = new Map<string, number>();
+    for (const [id, { value }] of windDirData) map.set(id, value);
+    return map;
+  }, [windDirData, mapMode]);
+
+  const varLabels = useMemo(() => {
+    if (!activeVarData || mapMode === 'status') return undefined;
+    const map = new Map<string, string>();
+    for (const [id, { value, units: rawUnits }] of activeVarData) {
+      const { value: converted } = convertValue(value, rawUnits, settings.units, mapMode);
+      const label = mapMode === 'RF_1_Tot300s'
+        ? converted.toFixed(settings.units === 'imperial' ? 2 : 1)
+        : String(Math.round(converted));
+      map.set(id, label);
+    }
+    return map;
+  }, [activeVarData, mapMode, settings.units]);
+
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | undefined>();
   const [panTo, setPanTo] = useState<{ lat: number; lng: number } | undefined>();
+
+  // Close the variable dropdown when the user clicks outside it.
+  useEffect(() => {
+    if (!modeDropdownOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setModeDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [modeDropdownOpen]);
 
   // When location is obtained, fly the map to the user
   useEffect(() => {
@@ -144,6 +217,38 @@ export default function ExploreScreen() {
           </div>
         )}
 
+        {/* Map variable selector dropdown — only shown in map view */}
+        {view === 'map' && (
+          <div ref={dropdownRef} className="absolute top-2.5 left-4 z-[1002]">
+            <button
+              onClick={() => setModeDropdownOpen(o => !o)}
+              className="flex items-center gap-1.5 px-3 h-8 rounded-xl text-xs font-semibold bg-white/90 dark:bg-slate-800/90 backdrop-blur shadow border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition-colors"
+            >
+              {MAP_MODE_OPTIONS.find(o => o.mode === mapMode)?.label ?? 'Status'}
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                <path d="M5 7L1 3h8L5 7z"/>
+              </svg>
+            </button>
+            {modeDropdownOpen && (
+              <div className="absolute top-full mt-1 left-0 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden min-w-[110px]">
+                {MAP_MODE_OPTIONS.map(({ mode, label }) => (
+                  <button
+                    key={mode}
+                    onClick={() => { setMapMode(mode); setModeDropdownOpen(false); }}
+                    className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors ${
+                      mapMode === mode
+                        ? 'bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Map stays mounted even in list view to preserve camera state */}
         <div
           className={view === 'map' ? 'absolute inset-0' : 'hidden'}
@@ -162,7 +267,11 @@ export default function ExploreScreen() {
             geoLoading={geoLoading}
             isVisible={view === 'map'}
             panelHeight={panelHeight}
+            varColors={varColors}
+            varLabels={varLabels}
+            varArrows={varArrows}
           />
+          <MapLegend mode={mapMode} units={settings.units} />
         </div>
 
         {view === 'list' && (

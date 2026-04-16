@@ -3,18 +3,42 @@ import L from 'leaflet';
 // ─── Station circle ───────────────────────────────────────────────────────────
 // Default marker for every station. Color and fill reflect live status.
 
-export function stationDivIcon(color: string, hollow: boolean): L.DivIcon {
+// arrowDeg: wind direction in degrees (0=N, 90=E…). When set, draws a directional arrow.
+export function stationDivIcon(color: string, hollow: boolean, label?: string, arrowDeg?: number): L.DivIcon {
+  if (!label) {
+    // Status / no-data mode — small circle only
+    return L.divIcon({
+      className: '',
+      html: `<div style="
+        width:10px; height:10px; border-radius:50%;
+        background:${hollow ? 'transparent' : color};
+        border:${hollow ? `2px dashed ${color}` : '1.5px solid rgba(255,255,255,0.7)'};
+        box-shadow:${hollow ? 'none' : '0 0 4px rgba(0,0,0,0.45)'};
+        cursor:pointer;
+      "></div>`,
+      iconSize: [10, 10],
+      iconAnchor: [5, 5],
+    });
+  }
+
+  // Variable mode — colored pill with white label (+ optional direction arrow for wind)
+  const inner = arrowDeg != null
+    ? `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+          style="transform:rotate(${arrowDeg}deg); flex-shrink:0; display:block;">
+        <path d="M6 1 L10.5 10.5 L6 8 L1.5 10.5 Z" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke fill"/>
+      </svg>`
+    : '';
+
   return L.divIcon({
     className: '',
     html: `<div style="
-      width:12px; height:12px; border-radius:50%;
-      background:${hollow ? 'transparent' : color};
-      border:${hollow ? `2px dashed ${color}` : `1.5px solid rgba(255,255,255,0.7)`};
-      box-shadow:${hollow ? 'none' : '0 0 4px rgba(0,0,0,0.45)'};
-      cursor:pointer;
-    "></div>`,
-    iconSize: [12, 12],
-    iconAnchor: [6, 6],
+      background:${color}; border-radius:5px; padding:3px 6px;
+      display:inline-flex; align-items:center; gap:3px; cursor:pointer;
+      box-shadow:0 1px 5px rgba(0,0,0,0.45); white-space:nowrap;
+    ">${inner}<span style="color:white; font-size:12px; font-weight:700; line-height:1; text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,-1px 0 0 #000,1px 0 0 #000,0 -1px 0 #000,0 1px 0 #000;">${label}</span></div>`,
+    // null overrides Leaflet's default 12×12, letting the pill size to its content
+    iconSize: null as unknown as L.PointExpression,
+    iconAnchor: [8, 11],
   });
 }
 
