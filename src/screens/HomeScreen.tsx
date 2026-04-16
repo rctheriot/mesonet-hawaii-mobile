@@ -3,127 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
-import { ALLOWED_VARIABLES, convertValue, formatValue, getVariableLabel, groupByCategory, mergeWindReadings } from '../utils/units';
+import StationCard from '../components/StationCard';
+import { ALLOWED_VARIABLES, getVariableLabel, groupByCategory } from '../utils/units';
 import { useStations, useStationMonitor, useVariables } from '../hooks/useStations';
-import { useLatestMeasurements, useRainfall24hr } from '../hooks/useMeasurements';
-import { stationStatusKey, STATUS_DOT } from '../theme';
-import type { Station, StationMonitor } from '../types/api';
-
-// ─── Station Card ─────────────────────────────────────────────────────────────
-
-interface StationCardProps {
-  station: Station;
-  monitorData: Record<string, StationMonitor>;
-  varId: string | null;    // standard_name to display; null = show first available
-  onClick: () => void;
-}
-
-function StationCard({ station, monitorData, varId, onClick }: StationCardProps) {
-  const { data: measurements } = useLatestMeasurements(station.station_id);
-  const { settings } = useAppContext();
-  const statusKey = stationStatusKey(station, monitorData);
-
-  // Deduplicate and filter — same logic as LatestReadings
-  const allReadings = useMemo(() => {
-    if (!measurements) return [];
-    const seen = new Map<string, typeof measurements[0]>();
-    for (const m of measurements) {
-      if (ALLOWED_VARIABLES.has(m.variable) && !seen.has(m.variable) && m.value != null)
-        seen.set(m.variable, m);
-    }
-    return Array.from(seen.values());
-  }, [measurements]);
-
-  const { windReadings } = useMemo(() => mergeWindReadings(allReadings), [allReadings]);
-
-  const reading = useMemo(() => {
-    if (varId) return allReadings.find(m => m.variable === varId) ?? null;
-    // Auto-select: prefer air temp only — no fallback to other variables
-    return allReadings.find(m =>
-      m.variable_display_name?.toLowerCase().includes('air temp') ||
-      m.variable?.toLowerCase().includes('tair')
-    ) ?? null;
-  }, [allReadings, varId]);
-
-  const windInfo = reading ? (windReadings.find(w => w.speedMeasurement.variable === reading.variable) ?? null) : null;
-
-  const isRainfallSelected = reading?.variable === 'RF_1_Tot300s';
-  const { data: rainfall24hr, isLoading: rainfallLoading } = useRainfall24hr(station.station_id, isRainfallSelected);
-  const rainfallConverted = rainfall24hr != null
-    ? convertValue(rainfall24hr.total, rainfall24hr.units, settings.units, 'RF_1_Tot300s')
-    : null;
-
-  const converted = !isRainfallSelected && reading?.value != null
-    ? convertValue(Number(reading.value), reading.units ?? '', settings.units, reading.variable)
-    : null;
-
-  function relativeTime(ts: string) {
-    const diff = Date.now() - new Date(ts).getTime();
-    const mins = Math.floor(diff / 60_000);
-    if (mins < 1)  return 'just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(diff / 3_600_000);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(diff / 86_400_000)}d ago`;
-  }
-
-  const timestamp = isRainfallSelected ? null : reading?.timestamp;
-
-  return (
-    <button
-      onClick={onClick}
-      className="w-full text-left px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:border-sky-400 dark:hover:border-sky-500 active:scale-[0.98] transition-all flex items-center gap-3"
-    >
-      {/* Status dot */}
-      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[statusKey]}`} />
-
-      {/* Station name + island + elevation */}
-      <div className="flex-1 min-w-0">
-        <p className="text-base font-semibold text-slate-900 dark:text-slate-100 leading-tight">
-          {station.full_name ?? station.name ?? station.station_id}
-        </p>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5 truncate">
-          {station.island ?? 'Hawaii'}
-        </p>
-        {station.elevation != null && (
-          <p className="text-sm text-slate-400 dark:text-slate-500">
-            {settings.units === 'imperial'
-              ? `${Math.round(station.elevation * 3.28084)} ft`
-              : `${Math.round(station.elevation)} m`}
-          </p>
-        )}
-      </div>
-
-      {/* Primary reading — right-aligned */}
-      <div className="flex-shrink-0 text-right">
-        {isRainfallSelected ? (
-          <>
-            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-              {rainfallLoading ? <span className="text-slate-400">…</span> : rainfallConverted != null
-                ? <>{formatValue(rainfallConverted.value, 'RF_1_Tot300s')}<span className="text-sm font-normal text-slate-400 dark:text-slate-500 ml-0.5">{rainfallConverted.unit}</span></>
-                : <span className="text-slate-300 dark:text-slate-600">—</span>}
-            </span>
-          </>
-        ) : converted != null ? (
-          <>
-            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-              {windInfo?.compass && <span className="text-slate-500 dark:text-slate-400 mr-1">{windInfo.compass}</span>}
-              {formatValue(converted.value, reading?.variable)}
-              {converted.unit && <span className="text-sm font-normal text-slate-400 dark:text-slate-500 ml-0.5">{converted.unit}</span>}
-            </span>
-            {timestamp && (
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{relativeTime(timestamp)}</p>
-            )}
-          </>
-        ) : (
-          <span className="text-lg font-medium text-slate-300 dark:text-slate-600">—</span>
-        )}
-      </div>
-    </button>
-  );
-}
-
-// ─── Home Screen ──────────────────────────────────────────────────────────────
+import type { Station } from '../types/api';
 
 export default function HomeScreen() {
   const navigate = useNavigate();
@@ -143,7 +26,6 @@ export default function HomeScreen() {
 
   // Variable options for the selector — only whitelisted variables.
   // Wind direction is excluded (it's merged into the wind speed card).
-  // Wind speed is relabeled "Wind" since direction is always shown alongside it.
   const varOptions = useMemo(() => {
     return variables
       .filter(v => ALLOWED_VARIABLES.has(v.standard_name) && !/^WDrs_/.test(v.standard_name))
@@ -153,7 +35,6 @@ export default function HomeScreen() {
       }));
   }, [variables]);
 
-  // The currently selected variable display name (for the selector label)
   const selectedVarLabel = varOptions.find(v => v.id === homeVarId)?.label ?? 'Auto';
 
   const isEmpty = myStations.length === 0;
@@ -224,7 +105,6 @@ export default function HomeScreen() {
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
         {isEmpty ? (
-          // Empty state
           <div className="flex flex-col items-center justify-center h-full px-8 text-center gap-6">
             <div className="space-y-2">
               <p className="text-slate-500 dark:text-slate-400 text-base leading-relaxed">
@@ -242,7 +122,6 @@ export default function HomeScreen() {
             </button>
           </div>
         ) : (
-          // Station list — single column of cards with spacing
           <div className="flex flex-col gap-3 p-4">
             <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide px-1">Saved Stations</p>
             {myStations.map(station => (
