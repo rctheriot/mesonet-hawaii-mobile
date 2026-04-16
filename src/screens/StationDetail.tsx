@@ -1,50 +1,32 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStations, useStationMonitor } from '../hooks/useStations';
 import { useLatestMeasurements } from '../hooks/useMeasurements';
 import { useAppContext } from '../context/AppContext';
-import { ALLOWED_VARIABLES, convertValue, formatValue, getVariableLabel, groupByCategory, mergeWindReadings } from '../utils/units';
+import { useChartVars } from '../hooks/useChartVars';
+import { ALLOWED_VARIABLES, convertValue, formatValue, getVariableLabel } from '../utils/units';
+import { isStaleTimestamp } from '../utils/time';
 import { stationStatusKey, STATUS_BADGE, STATUS_LABEL } from '../theme';
 import HistoryChart from '../components/StationPanel/HistoryChart';
 import StationMeta from '../components/StationPanel/StationMeta';
-import Rainfall24hrCard from '../components/StationPanel/Rainfall24hrCard';
+import ReadingsGrid from '../components/StationPanel/ReadingsGrid';
 
 export default function StationDetail() {
   const { stationId } = useParams<{ stationId: string }>();
   const navigate = useNavigate();
-  const { favorites, toggleFavorite, settings, detailChartVars: chartVars, setDetailChartVars: setChartVars } = useAppContext();
+  const { favorites, toggleFavorite, settings } = useAppContext();
 
   const { data: stations = [], isLoading: stationsLoading } = useStations();
   const { data: monitorData = {} } = useStationMonitor();
   const { data: measurements, isLoading: readingsLoading } = useLatestMeasurements(stationId ?? null);
+  const { chartVars, selectVar } = useChartVars(stationId, measurements);
 
-  // Tracks which station ID has already been validated — same pattern as StationPanel.
-  // Ref (not state) avoids a render cycle that would re-run the effect before updates land.
-  const lastValidatedStationRef = useRef<string | null>(null);
-
-  // When measurements load for a new station, validate the persisted chartVars.
-  // Variables not available on this station are cleared.
-  useEffect(() => {
-    if (!stationId || !measurements || measurements.length === 0) return;
-    if (lastValidatedStationRef.current === stationId) return;
-    lastValidatedStationRef.current = stationId;
-    const available = new Set(measurements.map(m => m.variable));
-    const v0 = chartVars[0] && available.has(chartVars[0]) ? chartVars[0] : null;
-    const v1 = chartVars[1] && available.has(chartVars[1]) ? chartVars[1] : null;
-    if (v0 !== chartVars[0] || v1 !== chartVars[1]) {
-      setChartVars([v0, v1]);
-    }
-  }, [stationId, measurements]);
-
-  function handleSelectVar(varId: string) {
-    setChartVars([varId, chartVars[0]]);
-  }
   const [tab, setTab] = useState<'readings' | 'info'>('readings');
 
   const station = stations.find(s => s.station_id === stationId) ?? null;
   const isFavorite = stationId ? favorites.has(stationId) : false;
 
-  // Deduplicate measurements and filter to whitelisted variables only
+  // Deduplicate measurements and filter to whitelisted variables only.
   const readings = useMemo(() => {
     if (!measurements) return [];
     const seen = new Map<string, typeof measurements[0]>();
@@ -56,7 +38,7 @@ export default function StationDetail() {
     return Array.from(seen.values());
   }, [measurements]);
 
-  // Hero reading: show most recently selected variable if one is active, else prefer air temp
+  // Hero reading: show most recently selected variable if active, else prefer air temp.
   const heroReading = useMemo(() => {
     if (readings.length === 0) return null;
     if (chartVars[0]) return readings.find(m => m.variable === chartVars[0]) ?? readings[0];
@@ -70,14 +52,14 @@ export default function StationDetail() {
 
   const statusKey = station ? stationStatusKey(station, monitorData) : 'unknown';
 
-  // Stale: newest measurement is older than 24h
-  const isStale = useMemo(() => {
-    if (!measurements || measurements.length === 0) return false;
-    const newest = measurements.reduce((a, b) =>
+  const newestTimestamp = useMemo(() => {
+    if (!measurements?.length) return null;
+    return measurements.reduce((a, b) =>
       new Date(a.timestamp) > new Date(b.timestamp) ? a : b
-    );
-    return Date.now() - new Date(newest.timestamp).getTime() > 24 * 60 * 60 * 1000;
+    ).timestamp;
   }, [measurements]);
+
+  const isStale = isStaleTimestamp(newestTimestamp);
 
   // ── Loading / not found states ───────────────────────────────────────────────
 
@@ -133,7 +115,6 @@ export default function StationDetail() {
 
         {/* ── Hero section ──────────────────────────────────────────────────── */}
         <div className="px-5 pt-6 pb-5 border-b border-slate-100 dark:border-slate-800">
-          {/* Station name */}
           <div className="flex items-start justify-between gap-3 mb-1">
             <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
               {station.full_name ?? station.name ?? station.station_id}
@@ -218,68 +199,14 @@ export default function StationDetail() {
               </p>
               {readingsLoading ? (
                 <p className="text-slate-400 text-base">Loading…</p>
-              ) : readings.length === 0 ? (
-                <p className="text-slate-400 dark:text-slate-600 text-base">No readings available.</p>
-              ) : (() => {
-                const { windReadings, remainder } = mergeWindReadings(readings);
-                return (
-                  <div className="space-y-4">
-                    {groupByCategory(remainder, m => m.variable, m => m.variable_display_name ?? m.variable).map(({ group, items }) => (
-                      <div key={group}>
-                        <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-                          {group}
-                        </p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {items.map(m => {
-                            const selColor: 'sky' | 'amber' | null =
-                              chartVars[0] === m.variable ? 'sky'
-                              : chartVars[1] === m.variable ? 'amber'
-                              : null;
-
-                            if (m.variable === 'RF_1_Tot300s') {
-                              return (
-                                <Rainfall24hrCard
-                                  key={m.variable}
-                                  stationId={station.station_id}
-                                  varId={m.variable}
-                                  selectedColor={selColor}
-                                  onSelect={() => handleSelectVar(m.variable)}
-                                />
-                              );
-                            }
-                            const wind = windReadings.find(w => w.speedMeasurement.variable === m.variable);
-                            const c = convertValue(Number(m.value), m.units ?? '', settings.units, m.variable);
-                            return (
-                              <button
-                                key={m.variable}
-                                onClick={() => handleSelectVar(m.variable)}
-                                className={`text-left p-3 rounded-lg border transition-colors ${
-                                  selColor === 'sky'
-                                    ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
-                                    : selColor === 'amber'
-                                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30'
-                                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
-                                }`}
-                              >
-                                <div className="text-sm text-slate-500 dark:text-slate-400 leading-tight">
-                                  {wind ? 'Wind' : (m.variable_display_name ?? m.variable)}
-                                </div>
-                                <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                                  {wind?.compass && (
-                                    <span className="mr-1">{wind.compass}</span>
-                                  )}
-                                  {formatValue(c.value, m.variable)}
-                                  {c.unit && <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">{c.unit}</span>}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })()}
+              ) : (
+                <ReadingsGrid
+                  stationId={station.station_id}
+                  readings={readings}
+                  selectedVarIds={chartVars}
+                  onSelectVar={selectVar}
+                />
+              )}
             </div>
           </div>
         )}

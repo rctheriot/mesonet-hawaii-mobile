@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Station, StationMonitor } from '../../types/api';
 import { useLatestMeasurements } from '../../hooks/useMeasurements';
+import { useChartVars } from '../../hooks/useChartVars';
 import { stationStatusKey, STATUS_DOT } from '../../theme';
+import { relativeTime, isStaleTimestamp } from '../../utils/time';
 import StationMeta from './StationMeta';
 import LatestReadings from './LatestReadings';
 import HistoryChart from './HistoryChart';
@@ -16,21 +18,15 @@ interface StationPanelProps {
   onHeightChange?: (height: number) => void;
   isFavorite?: boolean;
   onToggleFavorite?: (id: string) => void;
-  chartVars: [string | null, string | null];
-  onChartVarsChange: (vars: [string | null, string | null]) => void;
 }
 
-export default function StationPanel({ station, monitorData, onClose, onHeightChange, isFavorite, onToggleFavorite, chartVars, onChartVarsChange }: StationPanelProps) {
+export default function StationPanel({ station, monitorData, onClose, onHeightChange, isFavorite, onToggleFavorite }: StationPanelProps) {
   const [tab, setTab] = useState<'readings' | 'meta'>('readings');
   const [panelHeight, setPanelHeight] = useState(() => Math.round(window.innerHeight * 0.5));
   const scrollRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
-  // Tracks which station ID has already been validated so the effect below only fires once
-  // per station switch, not on every measurements refetch. A ref (not state) avoids triggering
-  // an extra render cycle that would re-run the effect before chartVars updates land.
-  const lastValidatedStationRef = useRef<string | null>(null);
   const { data: measurements } = useLatestMeasurements(station?.station_id ?? null);
+  const { chartVars, selectVar } = useChartVars(station?.station_id, measurements);
 
   // Notify parent whenever height or visibility changes.
   // Passes 0 when no station is selected — App uses this to know the panel is hidden
@@ -39,30 +35,11 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
     onHeightChange?.(station ? panelHeight : 0);
   }, [panelHeight, station, onHeightChange]);
 
-  // Reset tab and scroll when station changes; leave chartVars for validation below.
+  // Reset tab and scroll when station changes.
   useEffect(() => {
     setTab('readings');
     scrollRef.current?.scrollTo({ top: 0 });
   }, [station?.station_id]);
-
-  // Once measurements load for a new station, validate the persisted chartVars.
-  // Any variable not available on this station is cleared.
-  useEffect(() => {
-    if (!station || !measurements || measurements.length === 0) return;
-    if (lastValidatedStationRef.current === station.station_id) return;
-    lastValidatedStationRef.current = station.station_id;
-    const available = new Set(measurements.map(m => m.variable));
-    const v0 = chartVars[0] && available.has(chartVars[0]) ? chartVars[0] : null;
-    const v1 = chartVars[1] && available.has(chartVars[1]) ? chartVars[1] : null;
-    if (v0 !== chartVars[0] || v1 !== chartVars[1]) {
-      onChartVarsChange([v0, v1]);
-    }
-  }, [station?.station_id, measurements]);
-
-  function handleSelectVar(varId: string) {
-    onChartVarsChange([varId, chartVars[0]]);
-    scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  }
 
   function handleDragStart(e: React.PointerEvent<HTMLDivElement>) {
     // Pointer capture ensures drag events keep firing even when the cursor
@@ -86,7 +63,7 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
 
   const statusKey = stationStatusKey(station, monitorData);
 
-  // Most recent timestamp across all measurements — used for "last updated" and stale check
+  // Most recent timestamp across all measurements — used for "last updated" and stale check.
   const newestTimestamp = (() => {
     if (!measurements || measurements.length === 0) return null;
     return measurements.reduce((latest, m) =>
@@ -94,20 +71,8 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
     ).timestamp;
   })();
 
-  const isStale = newestTimestamp
-    ? Date.now() - new Date(newestTimestamp).getTime() > 24 * 60 * 60 * 1000
-    : false;
-
-  const lastUpdated = (() => {
-    if (!newestTimestamp) return null;
-    const diff = Date.now() - new Date(newestTimestamp).getTime();
-    const mins = Math.floor(diff / 60_000);
-    if (mins < 1)  return 'just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(diff / 3_600_000);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(diff / 86_400_000)}d ago`;
-  })();
+  const isStale = isStaleTimestamp(newestTimestamp);
+  const lastUpdated = newestTimestamp ? relativeTime(newestTimestamp) : null;
 
   return (
     <div
@@ -192,19 +157,14 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {tab === 'readings' && (
           <div className="px-4 pt-3 pb-6 space-y-4">
-            {/* Chart */}
-            <div ref={chartRef}>
-              <HistoryChart
-                stationId={station.station_id}
-                varId={chartVars[0]}
-                varId2={chartVars[1]}
-              />
-            </div>
-
-            {/* Readings grid */}
+            <HistoryChart
+              stationId={station.station_id}
+              varId={chartVars[0]}
+              varId2={chartVars[1]}
+            />
             <LatestReadings
               stationId={station.station_id}
-              onSelectVar={handleSelectVar}
+              onSelectVar={selectVar}
               selectedVarIds={chartVars}
             />
           </div>
