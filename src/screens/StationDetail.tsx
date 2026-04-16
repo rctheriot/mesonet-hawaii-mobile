@@ -1,19 +1,19 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQueryClient, useIsFetching } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useStations, useStationMonitor } from '../hooks/useStations';
 import { useLatestMeasurements } from '../hooks/useMeasurements';
 import { useAppContext } from '../context/AppContext';
-import { ALLOWED_VARIABLES, convertValue, formatValue, groupByCategory, mergeWindReadings } from '../utils/units';
+import { ALLOWED_VARIABLES, convertValue, formatValue, getVariableLabel, groupByCategory, mergeWindReadings } from '../utils/units';
 import { stationStatusKey, STATUS_BADGE, STATUS_LABEL } from '../theme';
 import HistoryChart from '../components/StationPanel/HistoryChart';
 import StationMeta from '../components/StationPanel/StationMeta';
+import Rainfall24hrCard from '../components/StationPanel/Rainfall24hrCard';
 
 export default function StationDetail() {
   const { stationId } = useParams<{ stationId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const isFetching = useIsFetching() > 0;
   const { favorites, toggleFavorite, settings } = useAppContext();
 
   const { data: stations = [], isLoading: stationsLoading } = useStations();
@@ -97,17 +97,6 @@ export default function StationDetail() {
         >
           ← Home
         </button>
-        <button
-          onClick={() => queryClient.invalidateQueries()}
-          disabled={isFetching}
-          className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors disabled:opacity-40"
-          aria-label="Refresh data"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isFetching ? 'animate-spin' : ''}>
-            <polyline points="23 4 23 10 17 10"/>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-          </svg>
-        </button>
         {/* Save / Unsave station */}
         <button
           onClick={() => stationId && toggleFavorite(stationId)}
@@ -166,7 +155,7 @@ export default function StationDetail() {
                 );
               })()}
               <p className="text-base text-slate-500 dark:text-slate-400 mt-1">
-                {heroReading.variable_display_name ?? heroReading.variable}
+                {getVariableLabel(heroReading.variable, heroReading.variable_display_name)}
               </p>
             </div>
           ) : (
@@ -197,7 +186,7 @@ export default function StationDetail() {
             <div>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
                 {selectedVarId
-                  ? (readings.find(m => m.variable === selectedVarId)?.variable_display_name ?? selectedVarId)
+                  ? getVariableLabel(selectedVarId, readings.find(m => m.variable === selectedVarId)?.variable_display_name)
                   : 'History'}
               </p>
               <HistoryChart stationId={station.station_id} varId={selectedVarId} />
@@ -223,6 +212,17 @@ export default function StationDetail() {
                         </p>
                         <div className="grid grid-cols-2 gap-2">
                           {items.map(m => {
+                            if (m.variable === 'RF_1_Tot300s') {
+                              return (
+                                <Rainfall24hrCard
+                                  key={m.variable}
+                                  stationId={station.station_id}
+                                  varId={m.variable}
+                                  selected={selectedVarId === m.variable}
+                                  onSelect={() => setSelectedVarId(v => v === m.variable ? null : m.variable)}
+                                />
+                              );
+                            }
                             const wind = windReadings.find(w => w.speedMeasurement.variable === m.variable);
                             const c = convertValue(Number(m.value), m.units ?? '', settings.units, m.variable);
                             return (
@@ -235,7 +235,7 @@ export default function StationDetail() {
                                     : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
                                 }`}
                               >
-                                <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-tight">
                                   {wind ? 'Wind' : (m.variable_display_name ?? m.variable)}
                                 </p>
                                 <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 mt-0.5">

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Station, StationMonitor } from '../../types/api';
 import { useLatestMeasurements } from '../../hooks/useMeasurements';
+import { getVariableLabel } from '../../utils/units';
 import { stationStatusKey, STATUS_DOT } from '../../theme';
 import StationMeta from './StationMeta';
 import LatestReadings from './LatestReadings';
@@ -69,17 +70,31 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
 
   const statusKey = stationStatusKey(station, monitorData);
 
-  // Stale data: most recent measurement is older than 24h
-  const isStale = (() => {
-    if (!measurements || measurements.length === 0) return false;
-    const newest = measurements.reduce((latest, m) =>
+  // Most recent timestamp across all measurements — used for "last updated" and stale check
+  const newestTimestamp = (() => {
+    if (!measurements || measurements.length === 0) return null;
+    return measurements.reduce((latest, m) =>
       new Date(m.timestamp) > new Date(latest.timestamp) ? m : latest
-    );
-    return Date.now() - new Date(newest.timestamp).getTime() > 24 * 60 * 60 * 1000;
+    ).timestamp;
+  })();
+
+  const isStale = newestTimestamp
+    ? Date.now() - new Date(newestTimestamp).getTime() > 24 * 60 * 60 * 1000
+    : false;
+
+  const lastUpdated = (() => {
+    if (!newestTimestamp) return null;
+    const diff = Date.now() - new Date(newestTimestamp).getTime();
+    const mins = Math.floor(diff / 60_000);
+    if (mins < 1)  return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(diff / 3_600_000);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(diff / 86_400_000)}d ago`;
   })();
 
   const selectedVarName = selectedVarId
-    ? measurements?.find(m => m.variable === selectedVarId)?.variable_display_name ?? selectedVarId
+    ? getVariableLabel(selectedVarId, measurements?.find(m => m.variable === selectedVarId)?.variable_display_name)
     : null;
 
   return (
@@ -113,7 +128,10 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
                 </span>
               )}
             </div>
-            <p className="text-base text-slate-500 dark:text-slate-400">{station.island ?? 'Hawaii'}</p>
+            <p className="text-base text-slate-500 dark:text-slate-400">
+              {station.island ?? 'Hawaii'}
+              {lastUpdated && <span className="text-slate-400 dark:text-slate-500"> · Updated {lastUpdated}</span>}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">

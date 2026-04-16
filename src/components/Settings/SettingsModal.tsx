@@ -58,7 +58,8 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-slate-800 dark:text-slate-200">Units</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Metric or imperial measurements</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Metric (°C, mm, m/s)</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Imperial (°F, in, mph)</p>
             </div>
             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 gap-0.5">
               {(['metric', 'imperial'] as const).map(sys => (

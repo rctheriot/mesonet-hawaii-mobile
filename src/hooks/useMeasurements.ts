@@ -12,6 +12,24 @@ export function useLatestMeasurements(stationId: string | null) {
   });
 }
 
+// Fetches 24h of RF_1_Tot300s and returns the summed total + raw units.
+// enabled flag lets callers skip the fetch when rainfall isn't relevant.
+export function useRainfall24hr(stationId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: ['measurements', 'rainfall24hr', stationId],
+    queryFn: async () => {
+      const data = await fetchHistoricalMeasurements(stationId!, 'RF_1_Tot300s', '24h');
+      const valid = data.filter(m => m.value != null);
+      return {
+        total: valid.reduce((sum, m) => sum + Number(m.value), 0),
+        units: valid[0]?.units ?? 'mm',
+      };
+    },
+    enabled: !!stationId && enabled,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
 export function useHistoricalMeasurements(
   stationId: string | null,
   varId: string | null,
