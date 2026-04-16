@@ -5,11 +5,11 @@ import { convertValue, formatValue } from '../../utils/units';
 interface Rainfall24hrCardProps {
   stationId: string;
   varId: string;
-  selected: boolean;
+  selectedColor: 'sky' | 'amber' | null;
   onSelect: () => void;
 }
 
-export default function Rainfall24hrCard({ stationId, varId, selected, onSelect }: Rainfall24hrCardProps) {
+export default function Rainfall24hrCard({ stationId, varId, selectedColor, onSelect }: Rainfall24hrCardProps) {
   const { data, isLoading } = useRainfall24hr(stationId);
   const { settings } = useAppContext();
 
@@ -21,8 +21,10 @@ export default function Rainfall24hrCard({ stationId, varId, selected, onSelect 
     <button
       onClick={onSelect}
       className={`text-left p-3 rounded-lg border transition-colors ${
-        selected
+        selectedColor === 'sky'
           ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
+          : selectedColor === 'amber'
+          ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30'
           : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
       }`}
     >

@@ -1,16 +1,17 @@
 import { useState, useMemo } from 'react';
 import {
-  LineChart, Line, BarChart, Bar,
+  ComposedChart, Line, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { useHistoricalMeasurements } from '../../hooks/useMeasurements';
 import { useAppContext } from '../../context/AppContext';
-import { convertValue, formatValue } from '../../utils/units';
+import { convertValue, formatValue, getVariableLabel } from '../../utils/units';
 import type { TimeRange } from '../../types/api';
 
 interface HistoryChartProps {
   stationId: string;
   varId: string | null;
+  varId2?: string | null;
 }
 
 const RANGES: { label: string; value: TimeRange }[] = [
@@ -20,25 +21,19 @@ const RANGES: { label: string; value: TimeRange }[] = [
   { label: '7d',  value: '7d' },
 ];
 
-// Generate evenly-spaced tick timestamps for a given range.
-// These are computed from the fixed range window, independent of data density.
 function generateTicks(range: TimeRange, now: number): number[] {
   if (range === '6h') {
     const start = now - 6 * 60 * 60 * 1000;
-    // Every 1 hour: 0, 1, 2, 3, 4, 5, 6 → 7 ticks
     return [0, 1, 2, 3, 4, 5, 6].map(h => start + h * 60 * 60 * 1000);
   }
   if (range === '24h') {
     const start = now - 24 * 60 * 60 * 1000;
-    // Every 4 hours: 0, 4, 8, 12, 16, 20, 24 → 7 ticks
     return [0, 4, 8, 12, 16, 20, 24].map(h => start + h * 60 * 60 * 1000);
   }
   if (range === '3d') {
     const start = now - 3 * 24 * 60 * 60 * 1000;
-    // Every 12 hours: 0, 12, 24, 36, 48, 60, 72 → 7 ticks
     return [0, 12, 24, 36, 48, 60, 72].map(h => start + h * 60 * 60 * 1000);
   }
-  // 7d: one tick per calendar midnight within the range
   const ticks: number[] = [];
   const rangeStart = now - 7 * 24 * 60 * 60 * 1000;
   const todayMidnight = new Date(now);
@@ -50,7 +45,6 @@ function generateTicks(range: TimeRange, now: number): number[] {
   return ticks;
 }
 
-// Format a tick timestamp for display on the X-axis.
 function formatTick(ts: number, range: TimeRange): string {
   const d = new Date(ts);
   if (range === '6h' || range === '24h') {
@@ -58,15 +52,12 @@ function formatTick(ts: number, range: TimeRange): string {
   }
   if (range === '3d') {
     const h = d.getHours();
-    // Show date label at midnight, hour label otherwise
     if (h === 0) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     return `${String(h).padStart(2, '0')}:00`;
   }
-  // 7d: "Wed 1"
   return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
 }
 
-// Format the tooltip label (shown at the top of the hover popup).
 function formatLabel(ts: number, range: TimeRange): string {
   const d = new Date(ts);
   if (range === '6h' || range === '24h') {
@@ -79,12 +70,63 @@ function formatLabel(ts: number, range: TimeRange): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
+type SeriesStats =
+  | { kind: 'rainfall'; total: number }
+  | { kind: 'series'; min: number; avg: number; max: number };
+
+function computeStats(values: number[], isRainfall: boolean): SeriesStats {
+  if (isRainfall) return { kind: 'rainfall', total: values.reduce((s, v) => s + v, 0) };
+  return {
+    kind: 'series',
+    min: Math.min(...values),
+    avg: values.reduce((a, b) => a + b, 0) / values.length,
+    max: Math.max(...values),
+  };
+}
+
+function StatsRow({ stats, varId, displayUnit, color, label }: {
+  stats: SeriesStats;
+  varId: string | null;
+  displayUnit: string;
+  color: 'sky' | 'amber';
+  label: string;
+}) {
+  const dotClass = color === 'sky' ? 'bg-sky-400' : 'bg-amber-400';
+  return (
+    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+      <div className="flex items-center gap-1.5 min-w-0 mr-3">
+        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClass}`} />
+        <span className="truncate text-slate-600 dark:text-slate-300">{label}</span>
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {stats.kind === 'rainfall' ? (
+          <>
+            <span className="text-slate-400 dark:text-slate-500">total </span>
+            <span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.total, varId ?? undefined)}</span>
+            {displayUnit && <span className="text-slate-400 dark:text-slate-500">{displayUnit}</span>}
+          </>
+        ) : (
+          <>
+            <span><span className="text-slate-400 dark:text-slate-500">min </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.min, varId ?? undefined)}</span></span>
+            <span><span className="text-slate-400 dark:text-slate-500">avg </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.avg, varId ?? undefined)}</span></span>
+            <span><span className="text-slate-400 dark:text-slate-500">max </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.max, varId ?? undefined)}</span></span>
+            {displayUnit && <span className="text-slate-400 dark:text-slate-500">{displayUnit}</span>}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartProps) {
   const [range, setRange] = useState<TimeRange>('24h');
-  const { data, isLoading, isError } = useHistoricalMeasurements(stationId, varId, range);
   const { settings } = useAppContext();
 
-  // Snapshot "now" once per render so domain and ticks stay consistent.
+  const { data: data0, isLoading: loading0, isError: error0 } = useHistoricalMeasurements(stationId, varId, range);
+  const { data: data1, isLoading: loading1, isError: error1 } = useHistoricalMeasurements(stationId, varId2 ?? null, range);
+
+  // Snapshot "now" once per range change so domain and ticks stay consistent within a render.
+  // Intentionally NOT updated on every render — [range] dep is correct, not a missing dep.
   const now = useMemo(() => Date.now(), [range]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rangeMs: Record<TimeRange, number> = {
@@ -97,52 +139,72 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
   const domain: [number, number] = [now - rangeMs[range], now];
   const ticks = useMemo(() => generateTicks(range, now), [range, now]);
 
-  // Rainfall variables should use a bar chart to show discrete accumulation periods
-  const isRainfall = varId ? /^RF/.test(varId) : false;
+  const isRainfall0 = varId ? /^RF/.test(varId) : false;
+  const isRainfall1 = varId2 ? /^RF/.test(varId2) : false;
 
-  const rawUnits = data?.[0]?.units ?? '';
-  const displayUnit = data?.[0]
-    ? convertValue(0, rawUnits, settings.units, varId ?? undefined).unit
-    : rawUnits;
+  const rawUnits0 = data0?.[0]?.units ?? '';
+  const rawUnits1 = data1?.[0]?.units ?? '';
+  const displayUnit0 = data0?.[0] ? convertValue(0, rawUnits0, settings.units, varId ?? undefined).unit : rawUnits0;
+  const displayUnit1 = data1?.[0] ? convertValue(0, rawUnits1, settings.units, varId2 ?? undefined).unit : rawUnits1;
 
-  // chartData uses numeric epoch (ts) as the X key — this enables Recharts to interpolate
-  // the tooltip position smoothly across the full axis range rather than snapping to data points.
-  const chartData = useMemo(() => {
-    return (data ?? [])
+  const label0 = varId ? getVariableLabel(varId, data0?.[0]?.variable_display_name) : '';
+  const label1 = varId2 ? getVariableLabel(varId2, data1?.[0]?.variable_display_name) : '';
+
+  const chartData0 = useMemo(() =>
+    (data0 ?? [])
       .slice()
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       .filter(m => m.value != null)
       .map(m => ({
         ts: new Date(m.timestamp).getTime(),
-        value: convertValue(Number(m.value), rawUnits, settings.units, varId ?? undefined).value,
-      }));
-  }, [data, rawUnits, settings.units, varId]);
+        value: convertValue(Number(m.value), rawUnits0, settings.units, varId ?? undefined).value,
+      })),
+  [data0, rawUnits0, settings.units, varId]);
 
-  // Summary stats shown in the top-right of the chart header.
-  // Rainfall: cumulative totals for fixed windows (1h/12h/24h) from loaded data.
-  //   A window shows "—" if the loaded data doesn't span back that far.
-  // All others: min / avg / max over the selected range.
-  const stats = useMemo(() => {
-    if (chartData.length === 0) return null;
-    if (isRainfall) {
-      return {
-        kind: 'rainfall' as const,
-        total: chartData.reduce((s, d) => s + d.value, 0),
-      };
+  const chartData1 = useMemo(() =>
+    (data1 ?? [])
+      .slice()
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .filter(m => m.value != null)
+      .map(m => ({
+        ts: new Date(m.timestamp).getTime(),
+        value: convertValue(Number(m.value), rawUnits1, settings.units, varId2 ?? undefined).value,
+      })),
+  [data1, rawUnits1, settings.units, varId2]);
+
+  // Recharts requires a single data array for both the shared X axis and the hover tooltip
+  // to interpolate correctly. Two independent fetches may have non-overlapping timestamps,
+  // so we merge by exact ts: points present in only one series get null for the other,
+  // which Recharts renders as a gap (connectNulls=false).
+  const mergedData = useMemo(() => {
+    const map = new Map<number, { ts: number; v0: number | null; v1: number | null }>();
+    for (const d of chartData0) map.set(d.ts, { ts: d.ts, v0: d.value, v1: null });
+    for (const d of chartData1) {
+      const e = map.get(d.ts);
+      if (e) e.v1 = d.value;
+      else map.set(d.ts, { ts: d.ts, v0: null, v1: d.value });
     }
-    const values = chartData.map(d => d.value);
-    return {
-      kind: 'series' as const,
-      min: Math.min(...values),
-      avg: values.reduce((a, b) => a + b, 0) / values.length,
-      max: Math.max(...values),
-    };
-  }, [chartData, isRainfall, now]);
+    return Array.from(map.values()).sort((a, b) => a.ts - b.ts);
+  }, [chartData0, chartData1]);
 
-  // Always render the same-height shell when no variable is selected.
+  const stats0 = useMemo(() =>
+    chartData0.length > 0 ? computeStats(chartData0.map(d => d.value), isRainfall0) : null,
+  [chartData0, isRainfall0]);
+
+  const stats1 = useMemo(() =>
+    varId2 && chartData1.length > 0 ? computeStats(chartData1.map(d => d.value), isRainfall1) : null,
+  [chartData1, isRainfall1, varId2]);
+
+  const isLoading = loading0 || (!!varId2 && loading1);
+  const isError = error0 || (!!varId2 && error1);
+  const hasData = mergedData.length > 0;
+
   if (!varId) {
     return (
       <div className="space-y-2">
+        <div className="h-40 w-full flex items-center justify-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
+          <p className="text-slate-400 dark:text-slate-600 text-sm">Select a reading to view history</p>
+        </div>
         <div className="flex gap-1 opacity-40 pointer-events-none">
           {RANGES.map(r => (
             <div key={r.value} className="px-3 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
@@ -150,53 +212,25 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
             </div>
           ))}
         </div>
-        <div className="h-40 w-full flex items-center justify-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
-          <p className="text-slate-400 dark:text-slate-600 text-sm">Select a reading to view history</p>
-        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex gap-1">
-          {RANGES.map(r => (
-            <button
-              key={r.value}
-              onClick={() => setRange(r.value)}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                range === r.value
-                  ? 'bg-sky-500 dark:bg-sky-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
+      {/* Stats rows — full width, stacked */}
+      {(stats0 || stats1) && (
+        <div className="space-y-1">
+          {stats0 && (
+            <StatsRow stats={stats0} varId={varId} displayUnit={displayUnit0} color="sky" label={label0} />
+          )}
+          {stats1 && (
+            <StatsRow stats={stats1} varId={varId2 ?? null} displayUnit={displayUnit1} color="amber" label={label1} />
+          )}
         </div>
+      )}
 
-        {/* Summary stats — top-right of chart area */}
-        {stats && (
-          <div className="text-right leading-tight">
-            {stats.kind === 'rainfall' ? (
-              <div className="flex gap-1 text-xs text-slate-500 dark:text-slate-400">
-                <span className="text-slate-400 dark:text-slate-500">total </span>
-                <span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.total, varId ?? undefined)}</span>
-                {displayUnit && <span className="text-slate-400 dark:text-slate-500">{displayUnit}</span>}
-              </div>
-            ) : (
-              <div className="flex gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span><span className="text-slate-400 dark:text-slate-500">min </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.min, varId ?? undefined)}</span></span>
-                <span><span className="text-slate-400 dark:text-slate-500">avg </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.avg, varId ?? undefined)}</span></span>
-                <span><span className="text-slate-400 dark:text-slate-500">max </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.max, varId ?? undefined)}</span></span>
-                {displayUnit && <span className="text-slate-400 dark:text-slate-500">{displayUnit}</span>}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
+      {/* Chart */}
       <div className="h-40 w-full">
         {isLoading && (
           <div className="h-full flex items-center justify-center">
@@ -208,87 +242,91 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
             <p className="text-red-500 dark:text-red-400 text-sm">Failed to load history.</p>
           </div>
         )}
-        {!isLoading && !isError && chartData.length === 0 && (
+        {!isLoading && !isError && !hasData && (
           <div className="h-full flex items-center justify-center">
             <p className="text-slate-500 dark:text-slate-400 text-sm">No data for this period.</p>
           </div>
         )}
-        {!isLoading && chartData.length > 0 && (
+        {!isLoading && hasData && (
           <ResponsiveContainer width="100%" height={160} minWidth={0}>
-            {isRainfall ? (
-              <BarChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
-                <XAxis
-                  dataKey="ts"
-                  type="number"
-                  scale="time"
-                  domain={domain}
-                  ticks={ticks}
-                  tickFormatter={(ts: number) => formatTick(ts, range)}
-                  tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
-                />
+            <ComposedChart data={mergedData} margin={{ top: 4, right: varId2 ? 4 : 4, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
+              <XAxis
+                dataKey="ts"
+                type="number"
+                scale="time"
+                domain={domain}
+                ticks={ticks}
+                tickFormatter={(ts: number) => formatTick(ts, range)}
+                tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
+              />
+              <YAxis
+                yAxisId="0"
+                width={36}
+                tick={{ fontSize: 10, fill: varId2 ? '#38bdf8' : 'var(--chart-tick, #64748b)' }}
+                axisLine={varId2 ? { stroke: '#38bdf8' } : { stroke: 'var(--chart-grid, #e2e8f0)' }}
+                tickLine={varId2 ? { stroke: '#38bdf8' } : undefined}
+                tickFormatter={(v) => formatValue(Number(v), varId ?? undefined)}
+              />
+              {varId2 && (
                 <YAxis
-                  tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
-                  tickFormatter={(v) => formatValue(Number(v), varId ?? undefined)}
+                  yAxisId="1"
+                  orientation="right"
+                  width={36}
+                  tick={{ fontSize: 10, fill: '#f59e0b' }}
+                  axisLine={{ stroke: '#f59e0b' }}
+                  tickLine={{ stroke: '#f59e0b' }}
+                  tickFormatter={(v) => formatValue(Number(v), varId2 ?? undefined)}
                 />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--chart-tooltip-bg, #ffffff)',
-                    border: '1px solid var(--chart-tooltip-border, #e2e8f0)',
-                    fontSize: 12,
-                  }}
-                  labelStyle={{ color: 'var(--chart-tick, #64748b)' }}
-                  itemStyle={{ color: '#0ea5e9' }}
-                  labelFormatter={(ts) => formatLabel(Number(ts), range)}
-                  formatter={(value) => [
-                    `${formatValue(Number(value), varId ?? undefined)}${displayUnit ? ` ${displayUnit}` : ''}`,
-                    '',
-                  ]}
-                />
-                <Bar dataKey="value" fill="#38bdf8" radius={[2, 2, 0, 0]} />
-              </BarChart>
-            ) : (
-              <LineChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #e2e8f0)" />
-                <XAxis
-                  dataKey="ts"
-                  type="number"
-                  scale="time"
-                  domain={domain}
-                  ticks={ticks}
-                  tickFormatter={(ts: number) => formatTick(ts, range)}
-                  tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: 'var(--chart-tick, #64748b)' }}
-                  tickFormatter={(v) => formatValue(Number(v), varId ?? undefined)}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--chart-tooltip-bg, #ffffff)',
-                    border: '1px solid var(--chart-tooltip-border, #e2e8f0)',
-                    fontSize: 12,
-                  }}
-                  labelStyle={{ color: 'var(--chart-tick, #64748b)' }}
-                  itemStyle={{ color: '#0ea5e9' }}
-                  labelFormatter={(ts) => formatLabel(Number(ts), range)}
-                  formatter={(value) => [
-                    `${formatValue(Number(value), varId ?? undefined)}${displayUnit ? ` ${displayUnit}` : ''}`,
-                    '',
-                  ]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#38bdf8"
-                  dot={false}
-                  strokeWidth={2}
-                  connectNulls={false}
-                />
-              </LineChart>
-            )}
+              )}
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'var(--chart-tooltip-bg, #ffffff)',
+                  border: '1px solid var(--chart-tooltip-border, #e2e8f0)',
+                  fontSize: 12,
+                }}
+                labelStyle={{ color: 'var(--chart-tick, #64748b)' }}
+                labelFormatter={(ts) => formatLabel(Number(ts), range)}
+                formatter={(value, name) => {
+                  if (name === 'v0') return [
+                    `${formatValue(Number(value), varId ?? undefined)}${displayUnit0 ? ` ${displayUnit0}` : ''}`,
+                    label0,
+                  ];
+                  if (name === 'v1') return [
+                    `${formatValue(Number(value), varId2 ?? undefined)}${displayUnit1 ? ` ${displayUnit1}` : ''}`,
+                    label1,
+                  ];
+                  return [String(value), String(name)];
+                }}
+              />
+              {isRainfall0
+                ? <Bar dataKey="v0" yAxisId="0" fill="#38bdf8" radius={[2, 2, 0, 0]} />
+                : <Line type="monotone" dataKey="v0" yAxisId="0" stroke="#38bdf8" dot={false} strokeWidth={2} connectNulls={false} />
+              }
+              {varId2 && (isRainfall1
+                ? <Bar dataKey="v1" yAxisId="1" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                : <Line type="monotone" dataKey="v1" yAxisId="1" stroke="#f59e0b" dot={false} strokeWidth={2} connectNulls={false} />
+              )}
+            </ComposedChart>
           </ResponsiveContainer>
         )}
+      </div>
+
+      {/* Range buttons — below chart */}
+      <div className="flex gap-1">
+        {RANGES.map(r => (
+          <button
+            key={r.value}
+            onClick={() => setRange(r.value)}
+            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+              range === r.value
+                ? 'bg-sky-500 dark:bg-sky-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+            }`}
+          >
+            {r.label}
+          </button>
+        ))}
       </div>
     </div>
   );

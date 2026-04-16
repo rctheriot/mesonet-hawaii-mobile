@@ -1,6 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { useStations, useStationMonitor } from '../hooks/useStations';
 import { useLatestMeasurements } from '../hooks/useMeasurements';
 import { useAppContext } from '../context/AppContext';
@@ -13,15 +12,33 @@ import Rainfall24hrCard from '../components/StationPanel/Rainfall24hrCard';
 export default function StationDetail() {
   const { stationId } = useParams<{ stationId: string }>();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { favorites, toggleFavorite, settings } = useAppContext();
+  const { favorites, toggleFavorite, settings, detailChartVars: chartVars, setDetailChartVars: setChartVars } = useAppContext();
 
   const { data: stations = [], isLoading: stationsLoading } = useStations();
   const { data: monitorData = {} } = useStationMonitor();
   const { data: measurements, isLoading: readingsLoading } = useLatestMeasurements(stationId ?? null);
 
-  // Which variable the history chart is showing — defaults to the home screen's selected variable
-  const [selectedVarId, setSelectedVarId] = useState<string | null>(settings.homeVarId);
+  // Tracks which station ID has already been validated — same pattern as StationPanel.
+  // Ref (not state) avoids a render cycle that would re-run the effect before updates land.
+  const lastValidatedStationRef = useRef<string | null>(null);
+
+  // When measurements load for a new station, validate the persisted chartVars.
+  // Variables not available on this station are cleared.
+  useEffect(() => {
+    if (!stationId || !measurements || measurements.length === 0) return;
+    if (lastValidatedStationRef.current === stationId) return;
+    lastValidatedStationRef.current = stationId;
+    const available = new Set(measurements.map(m => m.variable));
+    const v0 = chartVars[0] && available.has(chartVars[0]) ? chartVars[0] : null;
+    const v1 = chartVars[1] && available.has(chartVars[1]) ? chartVars[1] : null;
+    if (v0 !== chartVars[0] || v1 !== chartVars[1]) {
+      setChartVars([v0, v1]);
+    }
+  }, [stationId, measurements]);
+
+  function handleSelectVar(varId: string) {
+    setChartVars([varId, chartVars[0]]);
+  }
   const [tab, setTab] = useState<'readings' | 'info'>('readings');
 
   const station = stations.find(s => s.station_id === stationId) ?? null;
@@ -39,17 +56,17 @@ export default function StationDetail() {
     return Array.from(seen.values());
   }, [measurements]);
 
-  // Hero reading: show selected variable if one is active, else prefer air temp
+  // Hero reading: show most recently selected variable if one is active, else prefer air temp
   const heroReading = useMemo(() => {
     if (readings.length === 0) return null;
-    if (selectedVarId) return readings.find(m => m.variable === selectedVarId) ?? readings[0];
+    if (chartVars[0]) return readings.find(m => m.variable === chartVars[0]) ?? readings[0];
     return (
       readings.find(m =>
         m.variable_display_name?.toLowerCase().includes('air temp') ||
         m.variable?.toLowerCase().includes('tair')
       ) ?? readings[0]
     );
-  }, [readings, selectedVarId]);
+  }, [readings, chartVars]);
 
   const statusKey = station ? stationStatusKey(station, monitorData) : 'unknown';
 
@@ -185,11 +202,13 @@ export default function StationDetail() {
             {/* ── History chart ─────────────────────────────────────────────── */}
             <div>
               <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
-                {selectedVarId
-                  ? getVariableLabel(selectedVarId, readings.find(m => m.variable === selectedVarId)?.variable_display_name)
-                  : 'History'}
+                History
               </p>
-              <HistoryChart stationId={station.station_id} varId={selectedVarId} />
+              <HistoryChart
+                stationId={station.station_id}
+                varId={chartVars[0]}
+                varId2={chartVars[1]}
+              />
             </div>
 
             {/* ── Readings grid ──────────────────────────────────────────────── */}
@@ -212,14 +231,19 @@ export default function StationDetail() {
                         </p>
                         <div className="grid grid-cols-2 gap-2">
                           {items.map(m => {
+                            const selColor: 'sky' | 'amber' | null =
+                              chartVars[0] === m.variable ? 'sky'
+                              : chartVars[1] === m.variable ? 'amber'
+                              : null;
+
                             if (m.variable === 'RF_1_Tot300s') {
                               return (
                                 <Rainfall24hrCard
                                   key={m.variable}
                                   stationId={station.station_id}
                                   varId={m.variable}
-                                  selected={selectedVarId === m.variable}
-                                  onSelect={() => setSelectedVarId(v => v === m.variable ? null : m.variable)}
+                                  selectedColor={selColor}
+                                  onSelect={() => handleSelectVar(m.variable)}
                                 />
                               );
                             }
@@ -228,23 +252,25 @@ export default function StationDetail() {
                             return (
                               <button
                                 key={m.variable}
-                                onClick={() => setSelectedVarId(v => v === m.variable ? null : m.variable)}
-                                className={`text-left p-4 rounded-xl border transition-colors ${
-                                  selectedVarId === m.variable
+                                onClick={() => handleSelectVar(m.variable)}
+                                className={`text-left p-3 rounded-lg border transition-colors ${
+                                  selColor === 'sky'
                                     ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
+                                    : selColor === 'amber'
+                                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30'
                                     : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
                                 }`}
                               >
-                                <p className="text-sm text-slate-500 dark:text-slate-400 leading-tight">
+                                <div className="text-sm text-slate-500 dark:text-slate-400 leading-tight">
                                   {wind ? 'Wind' : (m.variable_display_name ?? m.variable)}
-                                </p>
-                                <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 mt-0.5">
+                                </div>
+                                <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                                   {wind?.compass && (
                                     <span className="mr-1">{wind.compass}</span>
                                   )}
                                   {formatValue(c.value, m.variable)}
-                                  {c.unit && <span className="text-sm text-slate-400 ml-1">{c.unit}</span>}
-                                </p>
+                                  {c.unit && <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">{c.unit}</span>}
+                                </div>
                               </button>
                             );
                           })}

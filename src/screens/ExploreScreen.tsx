@@ -26,6 +26,7 @@ export default function ExploreScreen() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedStationId, setSelectedStationId] = useState<string | null>(lastStationId);
+  const [chartVars, setChartVars] = useState<[string | null, string | null]>([null, null]);
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | undefined>();
   const [panTo, setPanTo] = useState<{ lat: number; lng: number } | undefined>();
 
@@ -187,6 +188,8 @@ export default function ExploreScreen() {
           onHeightChange={handleHeightChange}
           isFavorite={selectedStation ? favorites.has(selectedStation.station_id) : false}
           onToggleFavorite={toggleFavorite}
+          chartVars={chartVars}
+          onChartVarsChange={setChartVars}
         />
       </div>
 
