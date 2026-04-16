@@ -6,11 +6,11 @@ import Rainfall24hrCard from './Rainfall24hrCard';
 interface LatestReadingsProps {
   stationId: string;
   onSelectVar: (varId: string) => void;
-  selectedVarId: string | null;
+  selectedVarIds: [string | null, string | null];
 }
 
 
-export default function LatestReadings({ stationId, onSelectVar, selectedVarId }: LatestReadingsProps) {
+export default function LatestReadings({ stationId, onSelectVar, selectedVarIds }: LatestReadingsProps) {
   const { data, isLoading, isError } = useLatestMeasurements(stationId);
   const { settings } = useAppContext();
 
@@ -38,6 +38,11 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
           </p>
           <div className="grid grid-cols-2 gap-2">
             {items.map((m) => {
+              const selColor: 'sky' | 'amber' | null =
+                selectedVarIds[0] === m.variable ? 'sky'
+                : selectedVarIds[1] === m.variable ? 'amber'
+                : null;
+
               // RF_1_Tot300s → 24hr total card
               if (m.variable === 'RF_1_Tot300s') {
                 return (
@@ -45,7 +50,7 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
                     key={m.variable}
                     stationId={stationId}
                     varId={m.variable}
-                    selected={selectedVarId === m.variable}
+                    selectedColor={selColor}
                     onSelect={() => onSelectVar(m.variable)}
                   />
                 );
@@ -58,8 +63,10 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
                   key={m.variable}
                   onClick={() => onSelectVar(m.variable)}
                   className={`text-left p-3 rounded-lg border transition-colors ${
-                    selectedVarId === m.variable
+                    selColor === 'sky'
                       ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
+                      : selColor === 'amber'
+                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30'
                       : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
                   }`}
                 >
