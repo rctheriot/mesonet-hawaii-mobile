@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchLatestMeasurements, fetchHistoricalMeasurements } from '../api/measurements';
+import { fetchLatestMeasurements, fetchHistoricalMeasurements, fetchMapMeasurements, fetchMapRainfall24hr } from '../api/measurements';
 import type { TimeRange } from '../types/api';
 
 export function useLatestMeasurements(stationId: string | null) {
@@ -27,6 +27,51 @@ export function useRainfall24hr(stationId: string | null, enabled = true) {
     },
     enabled: !!stationId && enabled,
     staleTime: 1000 * 60 * 5,
+  });
+}
+
+// Returns a Map<station_id, { value, units }> for the given variable across all stations.
+// Only enabled when varId is non-null so callers can conditionally fetch.
+export function useMapMeasurements(varId: string | null) {
+  return useQuery({
+    queryKey: ['measurements', 'map', varId],
+    queryFn: async () => {
+      const rows = await fetchMapMeasurements(varId!);
+      const map = new Map<string, { value: number; units: string }>();
+      for (const m of rows) {
+        const v = Number(m.value);
+        if (!Number.isNaN(v)) map.set(m.station_id, { value: v, units: m.units ?? '' });
+      }
+      return map;
+    },
+    enabled: !!varId,
+    staleTime: 1000 * 60 * 5,
+    refetchInterval: 1000 * 60 * 10,
+  });
+}
+
+// Sums 24hr of RF_1_Tot300s per station across all Hawaii stations.
+export function useMapRainfall24hr(enabled: boolean) {
+  return useQuery({
+    queryKey: ['measurements', 'map', 'rainfall24hr'],
+    queryFn: async () => {
+      const rows = await fetchMapRainfall24hr();
+      const sums = new Map<string, number>();
+      let units = 'mm';
+      for (const m of rows) {
+        if (m.value == null) continue;
+        const v = Number(m.value);
+        if (Number.isNaN(v)) continue;
+        sums.set(m.station_id, (sums.get(m.station_id) ?? 0) + v);
+        if (m.units) units = m.units;
+      }
+      const result = new Map<string, { value: number; units: string }>();
+      for (const [id, total] of sums) result.set(id, { value: total, units });
+      return result;
+    },
+    enabled,
+    staleTime: 1000 * 60 * 10,
+    refetchInterval: 1000 * 60 * 15,
   });
 }
 

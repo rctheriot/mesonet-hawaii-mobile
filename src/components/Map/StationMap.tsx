@@ -28,6 +28,30 @@ export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: numb
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// ─── Marker icon helper ───────────────────────────────────────────────────────
+// When variable data is present, stations with a value get a colored pill; stations
+// without a value get a small gray dot (no status color leaking through).
+function applyVarIcon(
+  marker: L.Marker,
+  id: string,
+  meta: { color: string; hollow: boolean },
+  varColors?: Map<string, string>,
+  varLabels?: Map<string, string>,
+  varArrows?: Map<string, number>,
+) {
+  if (varColors) {
+    const color = varColors.get(id);
+    const label = varLabels?.get(id);
+    if (color && label) {
+      marker.setIcon(stationDivIcon(color, false, label, varArrows?.get(id)));
+    } else {
+      marker.setIcon(stationDivIcon('#94a3b8', false)); // no data → gray dot
+    }
+  } else {
+    marker.setIcon(stationDivIcon(meta.color, meta.hollow));
+  }
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface StationMapProps {
   stations: Station[];
@@ -46,6 +70,12 @@ interface StationMapProps {
   // Current panel height in px — triggers a debounced invalidateSize so tiles
   // fill correctly after the panel is dragged or first opened.
   panelHeight?: number;
+  // Hex colors per station_id — when provided, overrides status colors.
+  varColors?: Map<string, string>;
+  // Display labels per station_id — when provided, shown as a pill on the marker.
+  varLabels?: Map<string, string>;
+  // Wind direction degrees per station_id — when provided, shows a directional arrow.
+  varArrows?: Map<string, number>;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -62,6 +92,9 @@ export default function StationMap({
   geoLoading = false,
   isVisible = true,
   panelHeight,
+  varColors,
+  varLabels,
+  varArrows,
 }: StationMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef        = useRef<L.Map | null>(null);
@@ -81,11 +114,8 @@ export default function StationMap({
     const map = L.map(containerRef.current, {
       center: [20.5, -157.5],
       zoom: 7,
-      zoomControl: false,       // added manually at top-right below
-      // Rotation and tilt are not features of Leaflet — map always points north.
+      zoomControl: false,
     });
-
-    L.control.zoom({ position: 'topright' }).addTo(map);
 
     const tile = L.tileLayer(TILE_URL.light, {
       attribution: ATTRIBUTION,
@@ -130,6 +160,8 @@ export default function StationMap({
   }, [panelHeight, isVisible]);
 
   // ── 4. Add / update station markers ──────────────────────────────────────
+  // Also depends on varColors/varLabels/varArrows so that a background station
+  // refetch doesn't reset variable-mode markers back to status colors.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || stations.length === 0) return;
@@ -141,17 +173,20 @@ export default function StationMap({
       const key    = stationStatusKey(station, monitorData);
       const color  = STATUS_HEX[key];
       const hollow = STATUS_HOLLOW[key];
+      // Keep metaRef in sync so effect 5 can restore the right status color
+      // when a station is deselected.
       metaRef.current[station_id] = { color, hollow };
 
       if (markersRef.current[station_id]) {
-        // Already on the map — update status color.
-        // Skip if it's currently showing the selected pin; effect 5 owns that icon.
+        // Existing marker — apply current variable coloring (or status if no variable mode).
         if (station_id !== selectedStationId) {
-          markersRef.current[station_id].setIcon(stationDivIcon(color, hollow));
+          applyVarIcon(markersRef.current[station_id], station_id, { color, hollow }, varColors, varLabels, varArrows);
         }
         return;
       }
 
+      // New marker — always starts with status color; variable coloring applied
+      // in the same effect pass once varColors is populated.
       const marker = L.marker([lat, lng], {
         icon: stationDivIcon(color, hollow),
         keyboard: false,
@@ -160,23 +195,20 @@ export default function StationMap({
       marker.addTo(map);
       markersRef.current[station_id] = marker;
     });
-  }, [stations, monitorData]);
+  }, [stations, monitorData, varColors, varLabels, varArrows]);
 
   // ── 5. Selected station → teardrop pin ───────────────────────────────────
-  // marker.setIcon() is synchronous. No events, no timing, no separate marker.
-  // Theme changes do not affect this — setUrl() never touches markers.
   useEffect(() => {
-    // Reset every marker back to its status-color circle
     Object.entries(markersRef.current).forEach(([id, marker]) => {
       const meta = metaRef.current[id];
-      if (meta) marker.setIcon(stationDivIcon(meta.color, meta.hollow));
+      if (!meta) return;
+      applyVarIcon(marker, id, meta, varColors, varLabels, varArrows);
     });
 
-    // Swap the selected station to the pin icon
     if (selectedStationId && markersRef.current[selectedStationId]) {
       markersRef.current[selectedStationId].setIcon(selectedPinIcon());
     }
-  }, [selectedStationId]);
+  }, [selectedStationId, varColors, varLabels, varArrows]);
 
   // ── 6. User location marker ───────────────────────────────────────────────
   useEffect(() => {
@@ -217,28 +249,43 @@ export default function StationMap({
 
   return (
     <div className="relative w-full h-full isolate">
-      {/* Leaflet renders into this div */}
       <div ref={containerRef} className="w-full h-full" />
 
-      {/* Center-on-user button — React overlay, simpler than a custom Leaflet control */}
-      {onCenterOnUser && (
+      {/* Unified map controls — zoom + center-on-user as a single styled group */}
+      <div className="absolute top-2.5 right-2.5 z-[1001] flex flex-row rounded-xl overflow-hidden shadow border border-slate-200 dark:border-slate-600">
         <button
-          onClick={onCenterOnUser}
-          disabled={geoLoading}
-          className="absolute top-2.5 left-4 z-[1001] w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded shadow border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
-          aria-label="Center on my location"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-               fill="none" stroke="currentColor" strokeWidth="2"
-               strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <line x1="12" y1="2"  x2="12" y2="6"/>
-            <line x1="12" y1="18" x2="12" y2="22"/>
-            <line x1="2"  y1="12" x2="6"  y2="12"/>
-            <line x1="18" y1="12" x2="22" y2="12"/>
-          </svg>
-        </button>
-      )}
+          onClick={() => mapRef.current?.zoomIn()}
+          className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors text-lg font-light leading-none"
+          aria-label="Zoom in"
+        >+</button>
+        <div className="w-px bg-slate-200 dark:bg-slate-600" />
+        <button
+          onClick={() => mapRef.current?.zoomOut()}
+          className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors text-lg font-light leading-none"
+          aria-label="Zoom out"
+        >−</button>
+        {onCenterOnUser && (
+          <>
+            <div className="w-px bg-slate-200 dark:bg-slate-600" />
+            <button
+              onClick={onCenterOnUser}
+              disabled={geoLoading}
+              className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 transition-colors"
+              aria-label="Center on my location"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" strokeWidth="2.2"
+                   strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <line x1="12" y1="2"  x2="12" y2="6"/>
+                <line x1="12" y1="18" x2="12" y2="22"/>
+                <line x1="2"  y1="12" x2="6"  y2="12"/>
+                <line x1="18" y1="12" x2="22" y2="12"/>
+              </svg>
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
