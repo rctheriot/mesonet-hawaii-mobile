@@ -118,6 +118,27 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
       }));
   }, [data, rawUnits, settings.units, varId]);
 
+  // Summary stats shown in the top-right of the chart header.
+  // Rainfall: cumulative totals for fixed windows (1h/12h/24h) from loaded data.
+  //   A window shows "—" if the loaded data doesn't span back that far.
+  // All others: min / avg / max over the selected range.
+  const stats = useMemo(() => {
+    if (chartData.length === 0) return null;
+    if (isRainfall) {
+      return {
+        kind: 'rainfall' as const,
+        total: chartData.reduce((s, d) => s + d.value, 0),
+      };
+    }
+    const values = chartData.map(d => d.value);
+    return {
+      kind: 'series' as const,
+      min: Math.min(...values),
+      avg: values.reduce((a, b) => a + b, 0) / values.length,
+      max: Math.max(...values),
+    };
+  }, [chartData, isRainfall, now]);
+
   // Always render the same-height shell when no variable is selected.
   if (!varId) {
     return (
@@ -138,20 +159,42 @@ export default function HistoryChart({ stationId, varId }: HistoryChartProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-1">
-        {RANGES.map(r => (
-          <button
-            key={r.value}
-            onClick={() => setRange(r.value)}
-            className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-              range === r.value
-                ? 'bg-sky-500 dark:bg-sky-600 text-white'
-                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex gap-1">
+          {RANGES.map(r => (
+            <button
+              key={r.value}
+              onClick={() => setRange(r.value)}
+              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                range === r.value
+                  ? 'bg-sky-500 dark:bg-sky-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Summary stats — top-right of chart area */}
+        {stats && (
+          <div className="text-right leading-tight">
+            {stats.kind === 'rainfall' ? (
+              <div className="flex gap-1 text-xs text-slate-500 dark:text-slate-400">
+                <span className="text-slate-400 dark:text-slate-500">total </span>
+                <span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.total, varId ?? undefined)}</span>
+                {displayUnit && <span className="text-slate-400 dark:text-slate-500">{displayUnit}</span>}
+              </div>
+            ) : (
+              <div className="flex gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span><span className="text-slate-400 dark:text-slate-500">min </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.min, varId ?? undefined)}</span></span>
+                <span><span className="text-slate-400 dark:text-slate-500">avg </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.avg, varId ?? undefined)}</span></span>
+                <span><span className="text-slate-400 dark:text-slate-500">max </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.max, varId ?? undefined)}</span></span>
+                {displayUnit && <span className="text-slate-400 dark:text-slate-500">{displayUnit}</span>}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="h-40 w-full">

@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient, useIsFetching } from '@tanstack/react-query';
 import { useAppContext } from '../context/AppContext';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
-import { ALLOWED_VARIABLES, convertValue, formatValue, groupByCategory, mergeWindReadings } from '../utils/units';
+import { ALLOWED_VARIABLES, convertValue, formatValue, getVariableLabel, groupByCategory, mergeWindReadings } from '../utils/units';
 import { useStations, useStationMonitor, useVariables } from '../hooks/useStations';
-import { useLatestMeasurements } from '../hooks/useMeasurements';
+import { useLatestMeasurements, useRainfall24hr } from '../hooks/useMeasurements';
 import { stationStatusKey, STATUS_DOT } from '../theme';
 import type { Station, StationMonitor } from '../types/api';
 
@@ -48,7 +47,13 @@ function StationCard({ station, monitorData, varId, onClick }: StationCardProps)
 
   const windInfo = reading ? (windReadings.find(w => w.speedMeasurement.variable === reading.variable) ?? null) : null;
 
-  const converted = reading?.value != null
+  const isRainfallSelected = reading?.variable === 'RF_1_Tot300s';
+  const { data: rainfall24hr, isLoading: rainfallLoading } = useRainfall24hr(station.station_id, isRainfallSelected);
+  const rainfallConverted = rainfall24hr != null
+    ? convertValue(rainfall24hr.total, rainfall24hr.units, settings.units, 'RF_1_Tot300s')
+    : null;
+
+  const converted = !isRainfallSelected && reading?.value != null
     ? convertValue(Number(reading.value), reading.units ?? '', settings.units, reading.variable)
     : null;
 
@@ -62,29 +67,27 @@ function StationCard({ station, monitorData, varId, onClick }: StationCardProps)
     return `${Math.floor(diff / 86_400_000)}d ago`;
   }
 
+  const timestamp = isRainfallSelected ? null : reading?.timestamp;
+
   return (
-    // Full-width card with horizontal layout — info left, reading right
     <button
       onClick={onClick}
-      className="w-full text-left p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:border-sky-400 dark:hover:border-sky-500 active:scale-[0.98] transition-all flex items-center gap-3"
+      className="w-full text-left px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:border-sky-400 dark:hover:border-sky-500 active:scale-[0.98] transition-all flex items-center gap-3"
     >
       {/* Status dot */}
-      <div className={`w-3 h-3 rounded-full flex-shrink-0 ${STATUS_DOT[statusKey]}`} />
+      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[statusKey]}`} />
 
-      {/* Station name + island + last updated */}
+      {/* Station name + island + elevation */}
       <div className="flex-1 min-w-0">
-        <p className="text-base font-semibold text-slate-900 dark:text-slate-100 truncate leading-tight">
+        <p className="text-base font-semibold text-slate-900 dark:text-slate-100 leading-tight">
           {station.full_name ?? station.name ?? station.station_id}
         </p>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+        <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5 truncate">
           {station.island ?? 'Hawaii'}
-          {reading?.timestamp && (
-            <span className="text-slate-400 dark:text-slate-500"> · {relativeTime(reading.timestamp)}</span>
-          )}
         </p>
         {station.elevation != null && (
-          <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
-            Elevation: {settings.units === 'imperial'
+          <p className="text-sm text-slate-400 dark:text-slate-500">
+            {settings.units === 'imperial'
               ? `${Math.round(station.elevation * 3.28084)} ft`
               : `${Math.round(station.elevation)} m`}
           </p>
@@ -93,22 +96,28 @@ function StationCard({ station, monitorData, varId, onClick }: StationCardProps)
 
       {/* Primary reading — right-aligned */}
       <div className="flex-shrink-0 text-right">
-        {converted != null ? (
+        {isRainfallSelected ? (
           <>
-            <span className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-              {windInfo?.compass && <span className="mr-1">{windInfo.compass}</span>}
-              {formatValue(converted.value, reading?.variable)}
+            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
+              {rainfallLoading ? <span className="text-slate-400">…</span> : rainfallConverted != null
+                ? <>{formatValue(rainfallConverted.value, 'RF_1_Tot300s')}<span className="text-sm font-normal text-slate-400 dark:text-slate-500 ml-0.5">{rainfallConverted.unit}</span></>
+                : <span className="text-slate-300 dark:text-slate-600">—</span>}
             </span>
-            {converted.unit && (
-              <span className="text-sm text-slate-500 dark:text-slate-400 ml-0.5">{converted.unit}</span>
+          </>
+        ) : converted != null ? (
+          <>
+            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
+              {windInfo?.compass && <span className="text-slate-500 dark:text-slate-400 mr-1">{windInfo.compass}</span>}
+              {formatValue(converted.value, reading?.variable)}
+              {converted.unit && <span className="text-sm font-normal text-slate-400 dark:text-slate-500 ml-0.5">{converted.unit}</span>}
+            </span>
+            {timestamp && (
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{relativeTime(timestamp)}</p>
             )}
           </>
         ) : (
-          <span className="text-2xl font-medium text-slate-300 dark:text-slate-600 leading-none">No value</span>
+          <span className="text-lg font-medium text-slate-300 dark:text-slate-600">—</span>
         )}
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
-          {windInfo != null ? 'Wind' : (reading?.variable_display_name ?? '')}
-        </p>
       </div>
     </button>
   );
@@ -118,8 +127,6 @@ function StationCard({ station, monitorData, varId, onClick }: StationCardProps)
 
 export default function HomeScreen() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const isFetching = useIsFetching() > 0;
   const { settings, updateSettings, favorites, openInstallPrompt } = useAppContext();
   const { homeVarId } = settings;
 
@@ -142,7 +149,7 @@ export default function HomeScreen() {
       .filter(v => ALLOWED_VARIABLES.has(v.standard_name) && !/^WDrs_/.test(v.standard_name))
       .map(v => ({
         id: v.standard_name,
-        label: /^WS_/.test(v.standard_name) ? 'Wind' : v.display_name,
+        label: getVariableLabel(v.standard_name, v.display_name),
       }));
   }, [variables]);
 
@@ -164,17 +171,6 @@ export default function HomeScreen() {
           Explore
         </button>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => queryClient.invalidateQueries()}
-            disabled={isFetching}
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors disabled:opacity-40"
-            aria-label="Refresh data"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isFetching ? 'animate-spin' : ''}>
-              <polyline points="23 4 23 10 17 10"/>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-          </button>
           <button
             onClick={() => setSettingsOpen(true)}
             className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"

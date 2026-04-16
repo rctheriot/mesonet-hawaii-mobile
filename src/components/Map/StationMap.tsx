@@ -43,6 +43,9 @@ interface StationMapProps {
   // Pass false when the map's container div is hidden (e.g. list view)
   // so Leaflet can recalculate tile layout when it becomes visible again.
   isVisible?: boolean;
+  // Current panel height in px — triggers a debounced invalidateSize so tiles
+  // fill correctly after the panel is dragged or first opened.
+  panelHeight?: number;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -58,6 +61,7 @@ export default function StationMap({
   onCenterOnUser,
   geoLoading = false,
   isVisible = true,
+  panelHeight,
 }: StationMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef        = useRef<L.Map | null>(null);
@@ -113,6 +117,17 @@ export default function StationMap({
   useEffect(() => {
     if (isVisible) mapRef.current?.invalidateSize();
   }, [isVisible]);
+
+  // ── 3b. Invalidate size when panel height changes ─────────────────────────
+  // Debounced so it fires once after a drag settles, not on every pixel.
+  // animate:false avoids the flicker that a live ResizeObserver caused.
+  useEffect(() => {
+    if (!isVisible) return;
+    const t = setTimeout(() => {
+      mapRef.current?.invalidateSize({ animate: false });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [panelHeight, isVisible]);
 
   // ── 4. Add / update station markers ──────────────────────────────────────
   useEffect(() => {
@@ -210,7 +225,7 @@ export default function StationMap({
         <button
           onClick={onCenterOnUser}
           disabled={geoLoading}
-          className="absolute top-2.5 left-2.5 z-[1001] w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded shadow border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
+          className="absolute top-2.5 left-4 z-[1001] w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded shadow border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors"
           aria-label="Center on my location"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"

@@ -1,6 +1,7 @@
 import { useLatestMeasurements } from '../../hooks/useMeasurements';
 import { useAppContext } from '../../context/AppContext';
 import { ALLOWED_VARIABLES, convertValue, formatValue, groupByCategory, mergeWindReadings } from '../../utils/units';
+import Rainfall24hrCard from './Rainfall24hrCard';
 
 interface LatestReadingsProps {
   stationId: string;
@@ -8,16 +9,6 @@ interface LatestReadingsProps {
   selectedVarId: string | null;
 }
 
-function relativeTime(timestamp: string): string {
-  const diff = Date.now() - new Date(timestamp).getTime();
-  const mins  = Math.floor(diff / 60_000);
-  const hours = Math.floor(diff / 3_600_000);
-  const days  = Math.floor(diff / 86_400_000);
-  if (mins  <  1) return 'just now';
-  if (mins  < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  return `${days}d ago`;
-}
 
 export default function LatestReadings({ stationId, onSelectVar, selectedVarId }: LatestReadingsProps) {
   const { data, isLoading, isError } = useLatestMeasurements(stationId);
@@ -47,7 +38,19 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
           </p>
           <div className="grid grid-cols-2 gap-2">
             {items.map((m) => {
-              // Render wind speed cards with direction info merged in
+              // RF_1_Tot300s → 24hr total card
+              if (m.variable === 'RF_1_Tot300s') {
+                return (
+                  <Rainfall24hrCard
+                    key={m.variable}
+                    stationId={stationId}
+                    varId={m.variable}
+                    selected={selectedVarId === m.variable}
+                    onSelect={() => onSelectVar(m.variable)}
+                  />
+                );
+              }
+              // Wind speed cards with direction info merged in
               const wind = windReadings.find(w => w.speedMeasurement.variable === m.variable);
               const converted = convertValue(Number(m.value), m.units ?? '', settings.units, m.variable);
               return (
@@ -60,7 +63,7 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
                       : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
                   }`}
                 >
-                  <div className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                  <div className="text-sm text-slate-500 dark:text-slate-400 leading-tight">
                     {wind ? 'Wind' : (m.variable_display_name ?? m.variable)}
                   </div>
                   <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -72,9 +75,7 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarId }
                       <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">{converted.unit}</span>
                     )}
                   </div>
-                  <div className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">
-                    {relativeTime(m.timestamp)}
-                  </div>
+
                 </button>
               );
             })}
