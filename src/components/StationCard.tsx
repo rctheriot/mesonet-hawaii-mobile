@@ -10,10 +10,11 @@ interface StationCardProps {
   station: Station;
   monitorData: Record<string, StationMonitor>;
   varId: string | null;    // standard_name to display; null = show first available
+  rainfallMap?: Map<string, { value: number; units: string }>;
   onClick: () => void;
 }
 
-export default function StationCard({ station, monitorData, varId, onClick }: StationCardProps) {
+export default function StationCard({ station, monitorData, varId, rainfallMap, onClick }: StationCardProps) {
   const { data: measurements } = useLatestMeasurements(station.station_id);
   const { settings } = useAppContext();
   const statusKey = stationStatusKey(station, monitorData);
@@ -44,10 +45,19 @@ export default function StationCard({ station, monitorData, varId, onClick }: St
     : null;
 
   const isRainfallSelected = reading?.variable === 'RF_1_Tot300s';
-  const { data: rainfall24hr, isLoading: rainfallLoading } = useRainfall24hr(station.station_id, isRainfallSelected);
-  const rainfallConverted = rainfall24hr != null
-    ? convertValue(rainfall24hr.total, rainfall24hr.units, settings.units, 'RF_1_Tot300s')
+  // Use bulk map data when available (1 call for all stations); fall back to per-station hook otherwise.
+  const mapEntry = rainfallMap?.get(station.station_id);
+  const { data: rainfall24hr, isLoading: rainfallLoading } = useRainfall24hr(
+    station.station_id,
+    isRainfallSelected && (!rainfallMap || !mapEntry),
+  );
+  const rainfallRaw = mapEntry
+    ? { total: mapEntry.value, units: mapEntry.units }
+    : rainfall24hr ?? null;
+  const rainfallConverted = rainfallRaw != null
+    ? convertValue(rainfallRaw.total, rainfallRaw.units, settings.units, 'RF_1_Tot300s')
     : null;
+  const isRainfallLoading = isRainfallSelected && !mapEntry && rainfallLoading;
 
   const converted = !isRainfallSelected && reading?.value != null
     ? convertValue(Number(reading.value), reading.units ?? '', settings.units, reading.variable)
@@ -58,21 +68,21 @@ export default function StationCard({ station, monitorData, varId, onClick }: St
   return (
     <button
       onClick={onClick}
-      className="w-full text-left px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:border-sky-400 dark:hover:border-sky-500 active:scale-[0.98] transition-all flex items-center gap-3"
+      className="w-full text-left px-4 py-3 rounded-2xl bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 hover:border-sky-400 dark:hover:border-sky-500 active:scale-[0.98] transition-all flex items-center gap-3"
     >
       {/* Status dot */}
       <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[statusKey]}`} />
 
       {/* Station name + island + elevation */}
       <div className="flex-1 min-w-0">
-        <p className="text-base font-semibold text-slate-900 dark:text-slate-100 leading-tight">
+        <p className="text-base font-semibold text-slate-900 dark:text-zinc-100 leading-tight">
           {station.full_name ?? station.name ?? station.station_id}
         </p>
-        <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5 truncate">
+        <p className="text-sm text-slate-400 dark:text-zinc-500 mt-0.5 truncate">
           {station.island ?? 'Hawaii'}
         </p>
         {station.elevation != null && (
-          <p className="text-sm text-slate-400 dark:text-slate-500">
+          <p className="text-sm text-slate-400 dark:text-zinc-500">
             {settings.units === 'imperial'
               ? `${Math.round(station.elevation * 3.28084)} ft`
               : `${Math.round(station.elevation)} m`}
@@ -83,26 +93,26 @@ export default function StationCard({ station, monitorData, varId, onClick }: St
       {/* Primary reading — right-aligned */}
       <div className="flex-shrink-0 text-right">
         {isRainfallSelected ? (
-          <span className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-            {rainfallLoading
+          <span className="text-2xl font-bold text-slate-900 dark:text-zinc-100 leading-none tabular-nums">
+            {isRainfallLoading
               ? <span className="text-slate-400">…</span>
               : rainfallConverted != null
-              ? <>{formatValue(rainfallConverted.value, 'RF_1_Tot300s')}<span className="text-sm font-normal text-slate-400 dark:text-slate-500 ml-0.5">{rainfallConverted.unit}</span></>
-              : <span className="text-slate-300 dark:text-slate-600">—</span>}
+              ? <>{formatValue(rainfallConverted.value, 'RF_1_Tot300s')}<span className="text-sm font-normal text-slate-400 dark:text-zinc-500 ml-0.5">{rainfallConverted.unit}</span></>
+              : <span className="text-slate-300 dark:text-zinc-600">—</span>}
           </span>
         ) : converted != null ? (
           <>
-            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
-              {windInfo?.compass && <span className="text-slate-500 dark:text-slate-400 mr-1">{windInfo.compass}</span>}
+            <span className="text-2xl font-bold text-slate-900 dark:text-zinc-100 leading-none tabular-nums">
+              {windInfo?.compass && <span className="text-slate-500 dark:text-zinc-400 mr-1">{windInfo.compass}</span>}
               {formatValue(converted.value, reading?.variable)}
-              {converted.unit && <span className="text-sm font-normal text-slate-400 dark:text-slate-500 ml-0.5">{converted.unit}</span>}
+              {converted.unit && <span className="text-sm font-normal text-slate-400 dark:text-zinc-500 ml-0.5">{converted.unit}</span>}
             </span>
             {timestamp && (
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{relativeTime(timestamp)}</p>
+              <p className="text-xs text-slate-400 dark:text-zinc-500 mt-0.5">{relativeTime(timestamp)}</p>
             )}
           </>
         ) : (
-          <span className="text-lg font-medium text-slate-300 dark:text-slate-600">—</span>
+          <span className="text-lg font-medium text-slate-300 dark:text-zinc-600">—</span>
         )}
       </div>
     </button>

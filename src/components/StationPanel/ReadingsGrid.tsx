@@ -20,7 +20,7 @@ export default function ReadingsGrid({ stationId, readings, selectedVarIds, onSe
   const { settings } = useAppContext();
 
   if (readings.length === 0) {
-    return <p className="text-slate-500 dark:text-slate-400 text-base">No readings available.</p>;
+    return <p className="text-slate-500 dark:text-zinc-400 text-base">No readings available.</p>;
   }
 
   const { windReadings, remainder } = mergeWindReadings(readings);
@@ -30,7 +30,7 @@ export default function ReadingsGrid({ stationId, readings, selectedVarIds, onSe
     <div className="space-y-4">
       {groups.map(({ group, items }) => (
         <div key={group}>
-          <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
+          <p className="text-xs font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-2">
             {group}
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -64,17 +64,17 @@ export default function ReadingsGrid({ stationId, readings, selectedVarIds, onSe
                       ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
                       : selColor === 'amber'
                       ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30'
-                      : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500'
+                      : 'border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 hover:border-slate-400 dark:hover:border-slate-500'
                   }`}
                 >
-                  <div className="text-sm text-slate-500 dark:text-slate-400 leading-tight">
+                  <div className="text-sm text-slate-500 dark:text-zinc-400 leading-tight">
                     {wind ? 'Wind' : (m.variable_display_name ?? m.variable)}
                   </div>
-                  <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  <div className="text-lg font-semibold text-slate-900 dark:text-zinc-100">
                     {wind?.compass && <span className="mr-1">{wind.compass}</span>}
                     {formatValue(converted.value, m.variable)}
                     {converted.unit && (
-                      <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">{converted.unit}</span>
+                      <span className="text-sm text-slate-500 dark:text-zinc-400 ml-1">{converted.unit}</span>
                     )}
                   </div>
                 </button>

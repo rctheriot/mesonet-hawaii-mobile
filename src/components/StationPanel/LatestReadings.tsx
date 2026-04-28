@@ -27,7 +27,7 @@ export default function LatestReadings({ stationId, onSelectVar, selectedVarIds 
     return Array.from(seen.values());
   }, [data]);
 
-  if (isLoading) return <p className="text-slate-500 dark:text-slate-400 text-base">Loading readings…</p>;
+  if (isLoading) return <p className="text-slate-500 dark:text-zinc-400 text-base">Loading readings…</p>;
   if (isError)   return <p className="text-red-500 dark:text-red-400 text-base">Failed to load readings.</p>;
 
   return (

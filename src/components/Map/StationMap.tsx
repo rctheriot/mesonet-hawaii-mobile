@@ -5,7 +5,7 @@ import type { Station, StationMonitor } from '../../types/api';
 import { stationStatusKey, STATUS_HEX, STATUS_HOLLOW } from '../../theme';
 import { stationDivIcon, selectedPinIcon, userLocationIcon } from './mapIcons';
 
-// ─── Tile sources (CartoDB raster — same provider as before) ──────────────────
+// ─── Tile sources (CartoDB raster) ───────────────────────────────────────────
 const TILE_URL = {
   light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
   dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -252,25 +252,25 @@ export default function StationMap({
       <div ref={containerRef} className="w-full h-full" />
 
       {/* Unified map controls — zoom + center-on-user as a single styled group */}
-      <div className="absolute top-2.5 right-2.5 z-[1001] flex flex-row rounded-xl overflow-hidden shadow border border-slate-200 dark:border-slate-600">
+      <div className="absolute top-2.5 right-2.5 z-[1001] flex flex-row rounded-xl overflow-hidden shadow border border-slate-200 dark:border-zinc-600">
         <button
           onClick={() => mapRef.current?.zoomIn()}
-          className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors text-lg font-light leading-none"
+          className="w-8 h-8 flex items-center justify-center bg-white dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-600 transition-colors text-lg font-light leading-none"
           aria-label="Zoom in"
         >+</button>
-        <div className="w-px bg-slate-200 dark:bg-slate-600" />
+        <div className="w-px bg-slate-200 dark:bg-zinc-600" />
         <button
           onClick={() => mapRef.current?.zoomOut()}
-          className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors text-lg font-light leading-none"
+          className="w-8 h-8 flex items-center justify-center bg-white dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-600 transition-colors text-lg font-light leading-none"
           aria-label="Zoom out"
         >−</button>
         {onCenterOnUser && (
           <>
-            <div className="w-px bg-slate-200 dark:bg-slate-600" />
+            <div className="w-px bg-slate-200 dark:bg-zinc-600" />
             <button
               onClick={onCenterOnUser}
               disabled={geoLoading}
-              className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-40 transition-colors"
+              className="w-8 h-8 flex items-center justify-center bg-white dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-600 disabled:opacity-40 transition-colors"
               aria-label="Center on my location"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"

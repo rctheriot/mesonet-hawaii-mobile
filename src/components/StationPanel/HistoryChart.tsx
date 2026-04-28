@@ -93,24 +93,24 @@ function StatsRow({ stats, varId, displayUnit, color, label }: {
 }) {
   const dotClass = color === 'sky' ? 'bg-sky-400' : 'bg-amber-400';
   return (
-    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+    <div className="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
       <div className="flex items-center gap-1.5 min-w-0 mr-3">
         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${dotClass}`} />
-        <span className="truncate text-slate-600 dark:text-slate-300">{label}</span>
+        <span className="truncate text-slate-600 dark:text-zinc-300">{label}</span>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
         {stats.kind === 'rainfall' ? (
           <>
-            <span className="text-slate-400 dark:text-slate-500">total </span>
-            <span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.total, varId ?? undefined)}</span>
-            {displayUnit && <span className="text-slate-400 dark:text-slate-500">{displayUnit}</span>}
+            <span className="text-slate-400 dark:text-zinc-500">total </span>
+            <span className="font-medium text-slate-700 dark:text-zinc-200">{formatValue(stats.total, varId ?? undefined)}</span>
+            {displayUnit && <span className="text-slate-400 dark:text-zinc-500">{displayUnit}</span>}
           </>
         ) : (
           <>
-            <span><span className="text-slate-400 dark:text-slate-500">min </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.min, varId ?? undefined)}</span></span>
-            <span><span className="text-slate-400 dark:text-slate-500">avg </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.avg, varId ?? undefined)}</span></span>
-            <span><span className="text-slate-400 dark:text-slate-500">max </span><span className="font-medium text-slate-700 dark:text-slate-200">{formatValue(stats.max, varId ?? undefined)}</span></span>
-            {displayUnit && <span className="text-slate-400 dark:text-slate-500">{displayUnit}</span>}
+            <span><span className="text-slate-400 dark:text-zinc-500">min </span><span className="font-medium text-slate-700 dark:text-zinc-200">{formatValue(stats.min, varId ?? undefined)}</span></span>
+            <span><span className="text-slate-400 dark:text-zinc-500">avg </span><span className="font-medium text-slate-700 dark:text-zinc-200">{formatValue(stats.avg, varId ?? undefined)}</span></span>
+            <span><span className="text-slate-400 dark:text-zinc-500">max </span><span className="font-medium text-slate-700 dark:text-zinc-200">{formatValue(stats.max, varId ?? undefined)}</span></span>
+            {displayUnit && <span className="text-slate-400 dark:text-zinc-500">{displayUnit}</span>}
           </>
         )}
       </div>
@@ -202,12 +202,12 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
   if (!varId) {
     return (
       <div className="space-y-2">
-        <div className="h-40 w-full flex items-center justify-center border border-dashed border-slate-200 dark:border-slate-700 rounded-lg">
-          <p className="text-slate-400 dark:text-slate-600 text-sm">Select a reading to view history</p>
+        <div className="h-40 w-full flex items-center justify-center border border-dashed border-slate-200 dark:border-zinc-700 rounded-lg">
+          <p className="text-slate-400 dark:text-zinc-600 text-sm">Select a reading to view history</p>
         </div>
         <div className="flex gap-1 opacity-40 pointer-events-none">
           {RANGES.map(r => (
-            <div key={r.value} className="px-3 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+            <div key={r.value} className="px-3 py-1 rounded text-xs font-medium bg-slate-100 dark:bg-zinc-700 text-slate-600 dark:text-zinc-300">
               {r.label}
             </div>
           ))}
@@ -234,7 +234,7 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
       <div className="h-40 w-full">
         {isLoading && (
           <div className="h-full flex items-center justify-center">
-            <p className="text-slate-500 dark:text-slate-400 text-sm">Loading chart…</p>
+            <p className="text-slate-500 dark:text-zinc-400 text-sm">Loading chart…</p>
           </div>
         )}
         {isError && (
@@ -244,7 +244,7 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
         )}
         {!isLoading && !isError && !hasData && (
           <div className="h-full flex items-center justify-center">
-            <p className="text-slate-500 dark:text-slate-400 text-sm">No data for this period.</p>
+            <p className="text-slate-500 dark:text-zinc-400 text-sm">No data for this period.</p>
           </div>
         )}
         {!isLoading && hasData && (
@@ -321,7 +321,7 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
             className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
               range === r.value
                 ? 'bg-sky-500 dark:bg-sky-600 text-white'
-                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                : 'bg-slate-100 dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-600'
             }`}
           >
             {r.label}

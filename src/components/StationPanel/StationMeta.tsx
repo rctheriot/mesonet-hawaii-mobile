@@ -23,11 +23,11 @@ export default function StationMeta({ station, monitorData }: StationMetaProps) 
   ];
 
   return (
-    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+    <div className="divide-y divide-slate-100 dark:divide-zinc-800">
       {allFields.map(({ label, value }) => (
         <div key={label} className="flex items-center py-3 text-base">
-          <span className="w-24 flex-shrink-0 text-slate-500 dark:text-slate-400">{label}</span>
-          <span className="text-slate-800 dark:text-slate-100">{value}</span>
+          <span className="w-24 flex-shrink-0 text-slate-500 dark:text-zinc-400">{label}</span>
+          <span className="text-slate-800 dark:text-zinc-100">{value}</span>
         </div>
       ))}
     </div>
