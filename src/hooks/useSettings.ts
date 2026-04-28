@@ -10,6 +10,10 @@ interface Settings {
   homeVarId: string | null;
   // Unit system for display — API always returns metric
   units: 'metric' | 'imperial';
+  // Last selected map coloring mode on the Explore screen
+  mapMode: string;
+  // Map or list view on the Home screen
+  homeView: 'list' | 'map';
 }
 
 const KEY = 'mesonet-settings';
@@ -19,8 +23,10 @@ const DEFAULTS: Settings = {
   view: 'map',
   lastStationId: null,
   panelHeightRatio: 0.5,
-  homeVarId: null,
+  homeVarId: 'RF_1_Tot300s',
   units: 'metric',
+  mapMode: 'RF_1_Tot300s',
+  homeView: 'list',
 };
 
 function load(): Settings {

@@ -65,7 +65,7 @@ export default function StationDetail() {
 
   if (stationsLoading) {
     return (
-      <div className="flex items-center justify-center w-full h-full bg-white dark:bg-slate-950">
+      <div className="flex items-center justify-center w-full h-full bg-white dark:bg-zinc-950">
         <p className="text-slate-400 text-base">Loading…</p>
       </div>
     );
@@ -73,8 +73,8 @@ export default function StationDetail() {
 
   if (!station) {
     return (
-      <div className="flex flex-col items-center justify-center w-full h-full bg-white dark:bg-slate-950 gap-4">
-        <p className="text-slate-500 dark:text-slate-400 text-base">Station not found.</p>
+      <div className="flex flex-col items-center justify-center w-full h-full bg-white dark:bg-zinc-950 gap-4">
+        <p className="text-slate-500 dark:text-zinc-400 text-base">Station not found.</p>
         <button
           onClick={() => navigate('/')}
           className="px-4 py-2 rounded-xl bg-sky-500 text-white text-base font-medium"
@@ -86,15 +86,15 @@ export default function StationDetail() {
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-white dark:bg-slate-950 overflow-hidden">
+    <div className="w-full h-full flex flex-col bg-white dark:bg-zinc-950 overflow-hidden">
       {/* Top bar */}
-      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-zinc-900/95 backdrop-blur border-b border-slate-200 dark:border-zinc-800">
         <button
           onClick={() => navigate('/')}
-          className="flex items-center gap-1 text-sky-500 dark:text-sky-400 text-base font-medium hover:text-sky-600 dark:hover:text-sky-300 transition-colors"
+          className="px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold transition-colors"
           aria-label="Back to home"
         >
-          ← Home
+          Home
         </button>
         {/* Save / Unsave station */}
         <button
@@ -114,16 +114,16 @@ export default function StationDetail() {
       <div className="flex-1 overflow-y-auto">
 
         {/* ── Hero section ──────────────────────────────────────────────────── */}
-        <div className="px-5 pt-6 pb-5 border-b border-slate-100 dark:border-slate-800">
+        <div className="px-5 pt-6 pb-5 border-b border-slate-100 dark:border-zinc-800">
           <div className="flex items-start justify-between gap-3 mb-1">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-zinc-100 leading-tight">
               {station.full_name ?? station.name ?? station.station_id}
             </h1>
           </div>
 
           {/* Island + status badge */}
           <div className="flex items-center gap-2 mb-4">
-            <p className="text-base text-slate-500 dark:text-slate-400">{station.island ?? 'Hawaii'}</p>
+            <p className="text-base text-slate-500 dark:text-zinc-400">{station.island ?? 'Hawaii'}</p>
             <span className={`text-sm px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[statusKey]}`}>
               {STATUS_LABEL[statusKey]}
             </span>
@@ -143,26 +143,26 @@ export default function StationDetail() {
                 const c = convertValue(Number(heroReading.value), heroReading.units ?? '', settings.units, heroReading.variable);
                 return (
                   <div className="flex items-end gap-2">
-                    <span className="text-6xl font-bold text-slate-900 dark:text-slate-100 leading-none tabular-nums">
+                    <span className="text-6xl font-bold text-slate-900 dark:text-zinc-100 leading-none tabular-nums">
                       {formatValue(c.value, heroReading.variable)}
                     </span>
                     {c.unit && (
-                      <span className="text-2xl text-slate-500 dark:text-slate-400 mb-1">{c.unit}</span>
+                      <span className="text-2xl text-slate-500 dark:text-zinc-400 mb-1">{c.unit}</span>
                     )}
                   </div>
                 );
               })()}
-              <p className="text-base text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-base text-slate-500 dark:text-zinc-400 mt-1">
                 {getVariableLabel(heroReading.variable, heroReading.variable_display_name)}
               </p>
             </div>
           ) : (
-            <p className="text-slate-400 dark:text-slate-600 text-base">No readings available.</p>
+            <p className="text-slate-400 dark:text-zinc-600 text-base">No readings available.</p>
           )}
         </div>
 
         {/* ── Tabs ──────────────────────────────────────────────────────────── */}
-        <div className="flex gap-1 px-4 pt-3 pb-0 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+        <div className="flex gap-1 px-4 pt-3 pb-0 border-b border-slate-200 dark:border-zinc-700 flex-shrink-0">
           {(['readings', 'info'] as const).map(t => (
             <button
               key={t}
@@ -170,7 +170,7 @@ export default function StationDetail() {
               className={`px-4 py-2 text-base font-medium capitalize border-b-2 transition-colors -mb-px ${
                 tab === t
                   ? 'border-sky-500 text-sky-500 dark:text-sky-400'
-                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  : 'border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200'
               }`}
             >
               {t === 'readings' ? 'Readings' : 'Info'}
@@ -182,7 +182,7 @@ export default function StationDetail() {
           <div className="px-4 pt-4 pb-8 space-y-6">
             {/* ── History chart ─────────────────────────────────────────────── */}
             <div>
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+              <p className="text-sm font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
                 History
               </p>
               <HistoryChart
@@ -194,7 +194,7 @@ export default function StationDetail() {
 
             {/* ── Readings grid ──────────────────────────────────────────────── */}
             <div>
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+              <p className="text-sm font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
                 Current Readings
               </p>
               {readingsLoading ? (

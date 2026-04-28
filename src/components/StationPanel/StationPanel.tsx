@@ -76,7 +76,7 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-10 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 rounded-t-2xl shadow-2xl flex flex-col"
+      className="fixed bottom-0 left-0 right-0 z-10 bg-white dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-700 rounded-t-2xl shadow-2xl flex flex-col"
       style={{ height: panelHeight }}
     >
       {/* Draggable handle — tall touch target, thin visual pill */}
@@ -87,7 +87,7 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
         onPointerUp={handleDragEnd}
         onPointerCancel={handleDragEnd}
       >
-        <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-500 transition-colors" />
+        <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-zinc-600 hover:bg-slate-400 dark:hover:bg-zinc-500 transition-colors" />
       </div>
 
       {/* Header */}
@@ -96,7 +96,7 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
           <div className={`mt-1.5 w-3 h-3 rounded-full flex-shrink-0 ${STATUS_DOT[statusKey]}`} />
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 leading-tight truncate">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-zinc-100 leading-tight truncate">
                 {station.full_name ?? station.name ?? station.station_id}
               </h2>
               {isStale && (
@@ -105,9 +105,9 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
                 </span>
               )}
             </div>
-            <p className="text-base text-slate-500 dark:text-slate-400">
+            <p className="text-base text-slate-500 dark:text-zinc-400">
               {station.island ?? 'Hawaii'}
-              {lastUpdated && <span className="text-slate-400 dark:text-slate-500"> · Updated {lastUpdated}</span>}
+              {lastUpdated && <span className="text-slate-400 dark:text-zinc-500"> · Updated {lastUpdated}</span>}
             </p>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
           )}
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 transition-colors"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 p-1 transition-colors"
             aria-label="Close"
           >
             ✕
@@ -137,7 +137,7 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-slate-200 dark:border-slate-700 px-4 flex-shrink-0">
+      <div className="flex gap-1 border-b border-slate-200 dark:border-zinc-700 px-4 flex-shrink-0">
         {(['readings', 'meta'] as const).map(t => (
           <button
             key={t}
@@ -145,7 +145,7 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
             className={`px-4 py-2 text-base font-medium capitalize border-b-2 transition-colors -mb-px ${
               tab === t
                 ? 'border-sky-500 text-sky-500 dark:text-sky-400'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                : 'border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200'
             }`}
           >
             {t === 'readings' ? 'Readings' : 'Info'}
