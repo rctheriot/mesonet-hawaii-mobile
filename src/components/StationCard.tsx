@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useLatestMeasurements, useRainfall24hr } from '../hooks/useMeasurements';
-import { ALLOWED_VARIABLES, convertValue, formatValue, getVariableLabel, mergeWindReadings } from '../utils/units';
+import { ALLOWED_VARIABLES, convertValue, formatValue, mergeWindReadings } from '../utils/units';
 import { relativeTime } from '../utils/time';
 import { stationStatusKey, STATUS_DOT } from '../theme';
 import type { Station, StationMonitor } from '../types/api';
