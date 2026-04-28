@@ -26,7 +26,7 @@ const HOME_VAR_OPTIONS = [
   { id: 'WS_1_Avg',     label: 'Wind'            },
 ] as const;
 
-const KNOWN_MAP_MODES = new Set(HOME_VAR_OPTIONS.map(o => o.id));
+const KNOWN_MAP_MODES = new Set<string>(HOME_VAR_OPTIONS.map(o => o.id));
 
 export default function HomeScreen() {
   const navigate = useNavigate();
