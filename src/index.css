@@ -32,30 +32,38 @@ html, body, #root {
   --chart-tooltip-border: #334155;
 }
 
-/* MapLibre GL overrides */
-.maplibregl-map {
-  font-family: inherit;
-}
-
-/* Keep attribution collapsed until user clicks the (i) button */
-.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-inner {
-  display: none;
-}
-.maplibregl-ctrl-attrib.maplibregl-compact.maplibregl-compact-show .maplibregl-ctrl-attrib-inner {
-  display: block;
-}
-
 /* Hide scrollbar on filter chip rows */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Horizontal zoom controls */
-.maplibregl-ctrl-top-right .maplibregl-ctrl-group {
-  display: flex;
-  flex-direction: row;
+/* ── Leaflet overrides ────────────────────────────────────────────────────── */
+.leaflet-container {
+  font-family: inherit;
 }
 
-.maplibregl-ctrl-top-right .maplibregl-ctrl-group button + button {
-  border-top: none;
-  border-left: 1px solid rgba(0, 0, 0, 0.1);
+/* Zoom controls — dark mode */
+.dark .leaflet-bar a,
+.dark .leaflet-bar a:hover {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-bottom-color: #334155;
+}
+.dark .leaflet-bar a:hover {
+  background-color: #334155;
+}
+
+/* Attribution — dark mode */
+.dark .leaflet-control-attribution {
+  background: rgba(30, 41, 59, 0.92) !important;
+  color: #cbd5e1 !important;
+  box-shadow: none !important;
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  border-radius: 4px;
+}
+.dark .leaflet-control-attribution a {
+  color: #38bdf8 !important;
+}
+/* Leaflet logo svg inside attribution */
+.dark .leaflet-control-attribution svg path {
+  fill: #38bdf8 !important;
 }

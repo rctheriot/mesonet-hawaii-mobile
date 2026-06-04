@@ -17,6 +17,68 @@ export const ALLOWED_VARIABLES = new Set([
   'RF_1_Tot300s', 'RFint_1_Max',
 ]);
 
+// ─── Variable grouping ────────────────────────────────────────────────────────
+
+export const GROUP_ORDER = [
+  'Rainfall', 'Temperature', 'Humidity', 'Radiation', 'Wind', 'Pressure', 'Soil',
+] as const;
+export type VariableGroup = typeof GROUP_ORDER[number];
+
+export const VARIABLE_GROUP: Record<string, VariableGroup> = {
+  // Rainfall
+  RF_1_Tot300s: 'Rainfall', RFint_1_Max:  'Rainfall',
+  // Temperature
+  Tair_1_Avg:   'Temperature', Tair_2_Avg: 'Temperature',
+  // Humidity
+  RH_1_Avg: 'Humidity', RH_2_Avg:   'Humidity',
+  VP_1_Avg: 'Humidity', VP_2_Avg:   'Humidity',
+  VPsat_1_Avg: 'Humidity', VPsat_2_Avg: 'Humidity',
+  VPD_1_Avg: 'Humidity',  VPD_2_Avg:   'Humidity',
+  // Radiation
+  SWin_1_Avg: 'Radiation', SWout_1_Avg: 'Radiation',
+  LWin_1_Avg: 'Radiation', LWout_1_Avg: 'Radiation',
+  SWnet_1_Avg: 'Radiation', LWnet_1_Avg: 'Radiation',
+  Rnet_1_Avg: 'Radiation', Albedo_1_Avg: 'Radiation',
+  Tsrf_1_Avg: 'Radiation', Tsky_1_Avg:  'Radiation',
+  // Wind
+  WS_1_Avg: 'Wind', WDrs_1_Avg: 'Wind',
+  // Pressure
+  P_1_Avg: 'Pressure', Psl_1_Avg: 'Pressure',
+  // Soil
+  Tsoil_1_Avg: 'Soil', Tsoil_2_Avg: 'Soil',
+  Tsoil_3_Avg: 'Soil', Tsoil_4_Avg: 'Soil',
+  SHFsrf_1_Avg: 'Soil',
+  SM_1_Avg: 'Soil', SM_2_Avg: 'Soil', SM_3_Avg: 'Soil',
+};
+
+// Groups an array of items into ordered category buckets, sorted alphabetically within each group.
+// Items whose variable ID has no group entry are placed in a trailing 'Other' bucket.
+export function groupByCategory<T>(
+  items: T[],
+  getVarId: (item: T) => string,
+  getLabel?: (item: T) => string,
+): { group: string; items: T[] }[] {
+  const buckets = new Map<string, T[]>();
+  for (const g of GROUP_ORDER) buckets.set(g, []);
+  buckets.set('Other', []);
+
+  for (const item of items) {
+    const g = VARIABLE_GROUP[getVarId(item)] ?? 'Other';
+    buckets.get(g)!.push(item);
+  }
+
+  return Array.from(buckets.entries())
+    .filter(([, list]) => list.length > 0)
+    .map(([group, list]) => ({
+      group,
+      items: getLabel
+        ? list.slice().sort((a, b) => getLabel(a).localeCompare(getLabel(b)))
+        : list,
+    }));
+}
+
+// ─── Unit conversion ──────────────────────────────────────────────────────────
+
 interface ConvertedValue {
   value: number;
   unit: string;
@@ -30,6 +92,11 @@ export function convertValue(
   system: UnitSystem,
   variableId?: string
 ): ConvertedValue {
+  // Soil moisture — API returns fractional VWC (0–1), always display as %
+  if (variableId && /^SM_/.test(variableId)) {
+    return { value: value * 100, unit: '%' };
+  }
+
   if (system === 'metric') return { value, unit };
 
   switch (unit) {
@@ -58,9 +125,63 @@ export function convertValue(
   }
 }
 
-// Format a converted value for display — fewer decimals for large numbers
-export function formatValue(value: number): string {
-  if (Math.abs(value) >= 100) return value.toFixed(1);
-  if (Math.abs(value) >= 10)  return value.toFixed(2);
-  return value.toFixed(3);
+// Returns a user-facing label for a variable, overriding API names for special cases.
+export function getVariableLabel(varId: string, apiDisplayName?: string): string {
+  if (varId === 'RF_1_Tot300s') return '24hr Rainfall';
+  if (/^WS_/.test(varId)) return 'Wind';
+  return apiDisplayName ?? varId;
+}
+
+// Format a converted value for display — always 1 decimal place.
+// Wind direction is the only exception: whole degrees, no decimal point.
+export function formatValue(value: number, variableId?: string): string {
+  if (variableId && /^WDrs/.test(variableId)) return Math.round(value).toString();
+  return value.toFixed(1);
+}
+
+// Convert degrees (0–360) to a compass abbreviation.
+export function degreesToCompass(deg: number): string {
+  const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  return dirs[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
+}
+
+// Represents a merged wind reading combining speed and direction.
+export interface WindReading<T> {
+  speedMeasurement: T;
+  dirDeg: number | null;   // degrees, or null if unavailable
+  compass: string | null;
+}
+
+// Merge WS_* and WDrs_* readings from a flat measurements array into WindReading objects.
+// Returns one WindReading per sensor index (e.g. WS_1_Avg + WDrs_1_Avg → index "1").
+// The original WDrs_* entries should be excluded from the caller's display list.
+export function mergeWindReadings<T extends { variable: string; value: string | number | null; units?: string; [key: string]: unknown }>(
+  items: T[]
+): { windReadings: WindReading<T>[]; remainder: T[] } {
+  const speedMap = new Map<string, T>();
+  const dirMap = new Map<string, T>();
+
+  for (const item of items) {
+    const wsMatch = item.variable.match(/^WS_(\d+)_/);
+    const wdMatch = item.variable.match(/^WDrs_(\d+)_/);
+    if (wsMatch) speedMap.set(wsMatch[1], item);
+    else if (wdMatch) dirMap.set(wdMatch[1], item);
+  }
+
+  const windReadings: WindReading<T>[] = [];
+  const dirVarIds = new Set(Array.from(dirMap.values()).map(d => d.variable));
+
+  for (const [idx, speedItem] of speedMap.entries()) {
+    const dirItem = dirMap.get(idx) ?? null;
+    const dirDeg = dirItem?.value != null ? Number(dirItem.value) : null;
+    windReadings.push({
+      speedMeasurement: speedItem,
+      dirDeg,
+      compass: dirDeg != null ? degreesToCompass(dirDeg) : null,
+    });
+  }
+
+  // Remove direction variables from remainder; speed variables stay (they become wind cards)
+  const remainder = items.filter(item => !dirVarIds.has(item.variable));
+  return { windReadings, remainder };
 }

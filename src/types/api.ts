@@ -1,6 +1,7 @@
 export interface Station {
   station_id: string;
   name: string;
+  full_name?: string;   // Includes proper Hawaiian diacriticals when available
   lat: number;
   lng: number;
   elevation?: number;
@@ -36,4 +37,4 @@ export interface StationMonitor {
   [key: string]: unknown;
 }
 
-export type TimeRange = '1h' | '24h' | '7d';
+export type TimeRange = '6h' | '24h' | '3d' | '7d';

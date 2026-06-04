@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAppContext } from '../../context/AppContext';
 
 type Platform = 'ios' | 'android' | null;
 
@@ -19,13 +20,13 @@ function isStandalone(): boolean {
 const STORAGE_KEY = 'pwa-prompt-dismissed';
 
 export default function PWAInstallPrompt() {
+  const { installPromptOpen, closeInstallPrompt } = useAppContext();
   const [visible, setVisible] = useState(false);
   const [platform, setPlatform] = useState<Platform>(null);
-  // Android deferred install prompt
   const [deferredPrompt, setDeferredPrompt] = useState<Event & { prompt: () => void } | null>(null);
 
+  // Auto-show logic: fires once on mount for mobile devices
   useEffect(() => {
-    // Don't show if already installed or user dismissed
     if (isStandalone()) return;
     if (sessionStorage.getItem(STORAGE_KEY)) return;
 
@@ -40,22 +41,30 @@ export default function PWAInstallPrompt() {
         setVisible(true);
       };
       window.addEventListener('beforeinstallprompt', handler);
-      // Show manual instructions after a short delay if native prompt doesn't fire
       const timer = setTimeout(() => setVisible(true), 2000);
       return () => {
         window.removeEventListener('beforeinstallprompt', handler);
         clearTimeout(timer);
       };
     } else {
-      // iOS — always show manual instructions
       const timer = setTimeout(() => setVisible(true), 1500);
       return () => clearTimeout(timer);
     }
   }, []);
 
+  // Force-open from Help modal — bypasses sessionStorage check
+  useEffect(() => {
+    if (installPromptOpen) {
+      const p = detectPlatform() ?? 'ios'; // default to iOS instructions on desktop
+      setPlatform(p);
+      setVisible(true);
+    }
+  }, [installPromptOpen]);
+
   function dismiss() {
     sessionStorage.setItem(STORAGE_KEY, '1');
     setVisible(false);
+    closeInstallPrompt();
   }
 
   async function handleAndroidInstall() {
@@ -68,20 +77,20 @@ export default function PWAInstallPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center pointer-events-none px-4 pb-6">
-      <div className="pointer-events-auto w-full max-w-sm bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm bg-slate-900/40">
+      <div className="w-full max-w-sm bg-white dark:bg-zinc-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-700 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center text-white text-sm font-bold">M</div>
             <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Hawaii Mesonet</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Add to Home Screen</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-zinc-100">Hawaii Mesonet</p>
+              <p className="text-xs text-slate-500 dark:text-zinc-400">Add to Home Screen</p>
             </div>
           </div>
           <button
             onClick={dismiss}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 transition-colors"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 p-1 transition-colors"
             aria-label="Dismiss"
           >
             ✕
@@ -91,13 +100,13 @@ export default function PWAInstallPrompt() {
         <div className="px-4 pb-4 space-y-3">
           {platform === 'ios' && (
             <>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
                 Install this app on your iPhone for quick access — no App Store needed.
               </p>
               <div className="space-y-2">
                 <Step number={1}>
                   Tap the <strong>Share</strong> button{' '}
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold">⎙</span>{' '}
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-100 dark:bg-zinc-700 text-slate-700 dark:text-zinc-300 text-xs font-bold">⎙</span>{' '}
                   at the bottom of Safari
                 </Step>
                 <Step number={2}>
@@ -112,7 +121,7 @@ export default function PWAInstallPrompt() {
 
           {platform === 'android' && (
             <>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-zinc-400">
                 Install this app on your Android device for quick access — no Play Store needed.
               </p>
               {deferredPrompt ? (
@@ -126,7 +135,7 @@ export default function PWAInstallPrompt() {
                 <div className="space-y-2">
                   <Step number={1}>
                     Tap the <strong>menu</strong> button{' '}
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold">⋮</span>{' '}
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-100 dark:bg-zinc-700 text-slate-700 dark:text-zinc-300 text-xs font-bold">⋮</span>{' '}
                     in Chrome's top right
                   </Step>
                   <Step number={2}>
@@ -142,7 +151,7 @@ export default function PWAInstallPrompt() {
 
           <button
             onClick={dismiss}
-            className="w-full py-2 rounded-xl text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+            className="w-full py-2 rounded-xl text-xs text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 transition-colors"
           >
             Maybe later
           </button>
@@ -158,7 +167,7 @@ function Step({ number, children }: { number: number; children: React.ReactNode 
       <span className="flex-shrink-0 w-5 h-5 rounded-full bg-sky-100 dark:bg-sky-900/50 text-sky-600 dark:text-sky-400 text-xs font-semibold flex items-center justify-center mt-0.5">
         {number}
       </span>
-      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{children}</p>
+      <p className="text-xs text-slate-700 dark:text-zinc-300 leading-relaxed">{children}</p>
     </div>
   );
 }

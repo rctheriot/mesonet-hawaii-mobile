@@ -1,30 +1,21 @@
 import { useEffect, useRef } from 'react';
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import type { Station, StationMonitor } from '../../types/api';
 import { stationStatusKey, STATUS_HEX, STATUS_HOLLOW } from '../../theme';
+import { stationDivIcon, selectedPinIcon, userLocationIcon } from './mapIcons';
 
-const MAP_STYLES = {
-  dark:  'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-  light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+// ─── Tile sources (CartoDB raster) ───────────────────────────────────────────
+const TILE_URL = {
+  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
 };
+const ATTRIBUTION =
+  '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> ' +
+  '© <a href="https://carto.com/attributions">CARTO</a>';
 
-interface StationMapProps {
-  stations: Station[];
-  monitorData: Record<string, StationMonitor>;
-  selectedStationId: string | null;
-  onSelectStation: (stationId: string) => void;
-  flyToCoords?: { lat: number; lng: number; zoom?: number };
-  panToCoords?: { lat: number; lng: number };
-  userLocation?: { latitude: number; longitude: number } | null;
-  darkMode?: boolean;
-  // Called when user taps the Center on Me button
-  onCenterOnUser?: () => void;
-  // True while location is being requested — shows a spinner state on the button
-  geoLoading?: boolean;
-}
-
-// Haversine distance in km
+// ─── Haversine distance ───────────────────────────────────────────────────────
+// Exported for use in ExploreScreen's station list sorting.
 export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -37,11 +28,57 @@ export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: numb
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function markerStyle(station: Station, monitor: Record<string, StationMonitor>): { color: string; hollow: boolean } {
-  const key = stationStatusKey(station, monitor);
-  return { color: STATUS_HEX[key], hollow: STATUS_HOLLOW[key] };
+// ─── Marker icon helper ───────────────────────────────────────────────────────
+// When variable data is present, stations with a value get a colored pill; stations
+// without a value get a small gray dot (no status color leaking through).
+function applyVarIcon(
+  marker: L.Marker,
+  id: string,
+  meta: { color: string; hollow: boolean },
+  varColors?: Map<string, string>,
+  varLabels?: Map<string, string>,
+  varArrows?: Map<string, number>,
+) {
+  if (varColors) {
+    const color = varColors.get(id);
+    const label = varLabels?.get(id);
+    if (color && label) {
+      marker.setIcon(stationDivIcon(color, false, label, varArrows?.get(id)));
+    } else {
+      marker.setIcon(stationDivIcon('#94a3b8', false)); // no data → gray dot
+    }
+  } else {
+    marker.setIcon(stationDivIcon(meta.color, meta.hollow));
+  }
 }
 
+// ─── Props ────────────────────────────────────────────────────────────────────
+interface StationMapProps {
+  stations: Station[];
+  monitorData: Record<string, StationMonitor>;
+  selectedStationId: string | null;
+  onSelectStation: (stationId: string) => void;
+  flyToCoords?: { lat: number; lng: number; zoom?: number };
+  panToCoords?: { lat: number; lng: number };
+  userLocation?: { latitude: number; longitude: number } | null;
+  darkMode?: boolean;
+  onCenterOnUser?: () => void;
+  geoLoading?: boolean;
+  // Pass false when the map's container div is hidden (e.g. list view)
+  // so Leaflet can recalculate tile layout when it becomes visible again.
+  isVisible?: boolean;
+  // Current panel height in px — triggers a debounced invalidateSize so tiles
+  // fill correctly after the panel is dragged or first opened.
+  panelHeight?: number;
+  // Hex colors per station_id — when provided, overrides status colors.
+  varColors?: Map<string, string>;
+  // Display labels per station_id — when provided, shown as a pill on the marker.
+  varLabels?: Map<string, string>;
+  // Wind direction degrees per station_id — when provided, shows a directional arrow.
+  varArrows?: Map<string, number>;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function StationMap({
   stations,
   monitorData,
@@ -50,203 +87,130 @@ export default function StationMap({
   flyToCoords,
   panToCoords,
   userLocation,
-  darkMode = true,
+  darkMode = false,
   onCenterOnUser,
   geoLoading = false,
+  isVisible = true,
+  panelHeight,
+  varColors,
+  varLabels,
+  varArrows,
 }: StationMapProps) {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
-  const markersRef = useRef<Record<string, maplibregl.Marker>>({});
-  const markerMetaRef = useRef<Record<string, { color: string; hollow: boolean }>>({});
-  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
-  const isMountedRef = useRef(false);
-  // Store the callback in a ref so the markers effect doesn't list it as a dependency.
-  // If it were a dep, every re-render of App would recreate all markers unnecessarily.
-  const onSelectStationRef = useRef(onSelectStation);
-  onSelectStationRef.current = onSelectStation;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef        = useRef<L.Map | null>(null);
+  const tileRef       = useRef<L.TileLayer | null>(null);
+  const markersRef    = useRef<Record<string, L.Marker>>({});
+  const metaRef       = useRef<Record<string, { color: string; hollow: boolean }>>({});
+  const userMarkerRef = useRef<L.Marker | null>(null);
 
-  // Refs for the center button — lets us update text/disabled without re-initializing the map.
-  const onCenterOnUserRef = useRef(onCenterOnUser);
-  onCenterOnUserRef.current = onCenterOnUser;
-  const centerBtnRef = useRef<HTMLButtonElement | null>(null);
+  // Keep callbacks in refs so effects that run once don't capture stale closures.
+  const onSelectRef = useRef(onSelectStation);
+  onSelectRef.current = onSelectStation;
 
-  // Initialize map
+  // ── 1. Initialize map (runs once) ────────────────────────────────────────
   useEffect(() => {
-    if (!mapContainer.current || mapRef.current) return;
+    if (!containerRef.current || mapRef.current) return;
 
-    const map = new maplibregl.Map({
-      container: mapContainer.current,
-      style: darkMode ? MAP_STYLES.dark : MAP_STYLES.light,
-      center: [-157.5, 20.5], // Hawaii
+    const map = L.map(containerRef.current, {
+      center: [20.5, -157.5],
       zoom: 7,
-      attributionControl: false,
+      zoomControl: false,
     });
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
-
-    // Add center-on-user button as a MapLibre control so it sits directly below
-    // the zoom buttons in the same top-right group rather than floating separately.
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.title = 'Center on my location';
-    btn.setAttribute('aria-label', 'Center on my location');
-    // SVG crosshair icon — matches MapLibre's 29×29 button footprint
-    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="3"/>
-      <line x1="12" y1="2" x2="12" y2="6"/>
-      <line x1="12" y1="18" x2="12" y2="22"/>
-      <line x1="2" y1="12" x2="6" y2="12"/>
-      <line x1="18" y1="12" x2="22" y2="12"/>
-    </svg>`;
-    btn.style.cssText = 'display:flex; align-items:center; justify-content:center; width:29px; height:29px; cursor:pointer;';
-    btn.onclick = () => onCenterOnUserRef.current?.();
-    centerBtnRef.current = btn;
-
-    const container = document.createElement('div');
-    container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
-    container.appendChild(btn);
-
-    map.addControl(
-      { onAdd: () => container, onRemove: () => container.parentNode?.removeChild(container) },
-      'top-left'
-    );
+    const tile = L.tileLayer(TILE_URL.light, {
+      attribution: ATTRIBUTION,
+      subdomains: 'abcd',
+      maxZoom: 19,
+    });
+    tile.addTo(map);
 
     mapRef.current = map;
+    tileRef.current = tile;
 
     return () => {
       map.remove();
       mapRef.current = null;
-      centerBtnRef.current = null;
+      tileRef.current = null;
+      markersRef.current = {};
+      metaRef.current = {};
     };
   }, []);
 
-  // Sync geoLoading state to the center button DOM element
+  // ── 2. Swap tile URL on theme change ─────────────────────────────────────
+  // tileLayer.setUrl() only swaps the URL — markers are completely unaffected.
   useEffect(() => {
-    const btn = centerBtnRef.current;
-    if (!btn) return;
-    btn.disabled = geoLoading;
-    btn.style.opacity = geoLoading ? '0.5' : '1';
-  }, [geoLoading]);
-
-  // Swap map style when dark/light mode changes.
-  // Skip on first mount — isMountedRef guards against wiping markers before they're added.
-  // setStyle() destroys all DOM layers, so we clear marker refs so the markers effect
-  // re-adds them fresh once the new style fires its 'load' event.
-  useEffect(() => {
-    if (!isMountedRef.current) {
-      isMountedRef.current = true;
-      return;
-    }
-    const map = mapRef.current;
-    if (!map) return;
-    map.setStyle(darkMode ? MAP_STYLES.dark : MAP_STYLES.light);
-    markersRef.current = {};
-    markerMetaRef.current = {};
+    tileRef.current?.setUrl(TILE_URL[darkMode ? 'dark' : 'light']);
   }, [darkMode]);
 
-  // Add/update markers when stations or monitor data changes
+  // ── 3. Invalidate size when map becomes visible ───────────────────────────
+  // Leaflet needs to recalculate tile layout after a hidden→visible transition.
+  useEffect(() => {
+    if (isVisible) mapRef.current?.invalidateSize();
+  }, [isVisible]);
+
+  // ── 3b. Invalidate size when panel height changes ─────────────────────────
+  // Debounced so it fires once after a drag settles, not on every pixel.
+  // animate:false avoids the flicker that a live ResizeObserver caused.
+  useEffect(() => {
+    if (!isVisible) return;
+    const t = setTimeout(() => {
+      mapRef.current?.invalidateSize({ animate: false });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [panelHeight, isVisible]);
+
+  // ── 4. Add / update station markers ──────────────────────────────────────
+  // Also depends on varColors/varLabels/varArrows so that a background station
+  // refetch doesn't reset variable-mode markers back to status colors.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || stations.length === 0) return;
 
-    // Wait for map style to load before adding markers
-    const addMarkers = () => {
-      stations.forEach((station) => {
-        const { station_id, lat, lng } = station;
-        if (!lat || !lng) return;
+    stations.forEach((station) => {
+      const { station_id, lat, lng } = station;
+      if (!lat || !lng) return;
 
-        const { color, hollow } = markerStyle(station, monitorData);
+      const key    = stationStatusKey(station, monitorData);
+      const color  = STATUS_HEX[key];
+      const hollow = STATUS_HOLLOW[key];
+      // Keep metaRef in sync so effect 5 can restore the right status color
+      // when a station is deselected.
+      metaRef.current[station_id] = { color, hollow };
 
-        if (markersRef.current[station_id]) {
-          // Marker exists — just update its color in place.
-          // markerMetaRef must stay in sync here so the highlight effect
-          // can restore the correct color when a station is deselected.
-          const el = markersRef.current[station_id].getElement();
-          const dot = el.querySelector('.station-dot') as HTMLElement | null;
-          if (dot) {
-            dot.style.backgroundColor = hollow ? 'transparent' : color;
-            dot.style.borderColor = color;
-          }
-          markerMetaRef.current[station_id] = { color, hollow };
-          return;
+      if (markersRef.current[station_id]) {
+        // Existing marker — apply current variable coloring (or status if no variable mode).
+        if (station_id !== selectedStationId) {
+          applyVarIcon(markersRef.current[station_id], station_id, { color, hollow }, varColors, varLabels, varArrows);
         }
+        return;
+      }
 
-        const el = document.createElement('div');
-        el.className = 'station-marker';
-        el.style.cssText = 'cursor:pointer; width:16px; height:16px;';
-
-        const dot = document.createElement('div');
-        dot.className = 'station-dot';
-        dot.style.cssText = `
-          width: 12px; height: 12px; border-radius: 50%;
-          background-color: ${hollow ? 'transparent' : color};
-          border: ${hollow ? `2px dashed ${color}` : '1px solid rgba(255,255,255,0.6)'};
-          transition: transform 0.15s;
-          box-shadow: ${hollow ? 'none' : '0 0 4px rgba(0,0,0,0.5)'};
-        `;
-        el.appendChild(dot);
-
-        el.addEventListener('mouseenter', () => { dot.style.transform = 'scale(1.4)'; });
-        el.addEventListener('mouseleave', () => { dot.style.transform = 'scale(1)'; });
-        el.addEventListener('click', () => onSelectStationRef.current(station_id));
-
-        const marker = new maplibregl.Marker({ element: el })
-          .setLngLat([lng, lat])
-          .addTo(map);
-
-        markersRef.current[station_id] = marker;
-        markerMetaRef.current[station_id] = { color, hollow };
+      // New marker — always starts with status color; variable coloring applied
+      // in the same effect pass once varColors is populated.
+      const marker = L.marker([lat, lng], {
+        icon: stationDivIcon(color, hollow),
+        keyboard: false,
       });
-    };
+      marker.on('click', () => onSelectRef.current(station_id));
+      marker.addTo(map);
+      markersRef.current[station_id] = marker;
+    });
+  }, [stations, monitorData, varColors, varLabels, varArrows]);
 
-    // After a style swap, the style won't be loaded yet — wait for 'load' before adding markers.
-    if (map.isStyleLoaded()) {
-      addMarkers();
-    } else {
-      map.once('load', addMarkers);
-    }
-  }, [stations, monitorData]);
-
-  // Highlight selected station
+  // ── 5. Selected station → teardrop pin ───────────────────────────────────
   useEffect(() => {
     Object.entries(markersRef.current).forEach(([id, marker]) => {
-      const el = marker.getElement();
-      const dot = el.querySelector('.station-dot') as HTMLElement | null;
-      if (!dot) return;
-      const selected = id === selectedStationId;
-      const meta = markerMetaRef.current[id];
-      dot.style.transform = selected ? 'scale(1.6)' : 'scale(1)';
-      dot.style.backgroundColor = selected ? '#0ea5e9' : meta?.color ?? '';
-      dot.style.border = selected
-        ? '2px solid white'
-        : '1px solid rgba(255,255,255,0.6)';
+      const meta = metaRef.current[id];
+      if (!meta) return;
+      applyVarIcon(marker, id, meta, varColors, varLabels, varArrows);
     });
-  }, [selectedStationId]);
 
-  // Fly to coords (with optional zoom)
-  useEffect(() => {
-    if (flyToCoords && mapRef.current) {
-      mapRef.current.flyTo({
-        center: [flyToCoords.lng, flyToCoords.lat],
-        ...(flyToCoords.zoom != null ? { zoom: flyToCoords.zoom } : {}),
-        duration: 1200,
-      });
+    if (selectedStationId && markersRef.current[selectedStationId]) {
+      markersRef.current[selectedStationId].setIcon(selectedPinIcon());
     }
-  }, [flyToCoords]);
+  }, [selectedStationId, varColors, varLabels, varArrows]);
 
-  // Pan to coords without changing zoom (list selection)
-  useEffect(() => {
-    if (panToCoords && mapRef.current) {
-      mapRef.current.easeTo({ center: [panToCoords.lng, panToCoords.lat], duration: 800 });
-    }
-  }, [panToCoords]);
-
-  // NOTE: ResizeObserver was intentionally removed. Calling map.resize() caused
-  // visible flickering when the panel was dragged. The CSS bottom offset on the
-  // container handles the layout instead.
-
-  // Show/update user location dot
+  // ── 6. User location marker ───────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -257,22 +221,71 @@ export default function StationMap({
       return;
     }
 
-    const el = document.createElement('div');
-    el.style.cssText = 'width:18px; height:18px; display:flex; align-items:center; justify-content:center;';
-    const dot = document.createElement('div');
-    dot.style.cssText = `
-      width: 14px; height: 14px; border-radius: 50%;
-      background: #3b82f6;
-      border: 2px solid white;
-      box-shadow: 0 0 0 3px rgba(59,130,246,0.35);
-    `;
-    el.appendChild(dot);
-
-    userMarkerRef.current?.remove();
-    userMarkerRef.current = new maplibregl.Marker({ element: el })
-      .setLngLat([userLocation.longitude, userLocation.latitude])
-      .addTo(map);
+    const { latitude, longitude } = userLocation;
+    if (userMarkerRef.current) {
+      // Move existing marker — avoids re-creating the pulsing DOM element
+      userMarkerRef.current.setLatLng([latitude, longitude]);
+    } else {
+      userMarkerRef.current = L.marker([latitude, longitude], {
+        icon: userLocationIcon(),
+        keyboard: false,
+        zIndexOffset: 1000, // renders above all station markers
+      }).addTo(map);
+    }
   }, [userLocation]);
 
-  return <div ref={mapContainer} className="w-full h-full" />;
+  // ── 7. Fly to coords (with optional zoom change) ──────────────────────────
+  useEffect(() => {
+    if (!flyToCoords || !mapRef.current) return;
+    const { lat, lng, zoom } = flyToCoords;
+    mapRef.current.flyTo([lat, lng], zoom ?? mapRef.current.getZoom(), { duration: 1.2 });
+  }, [flyToCoords]);
+
+  // ── 8. Pan to coords (no zoom change) ────────────────────────────────────
+  useEffect(() => {
+    if (!panToCoords || !mapRef.current) return;
+    mapRef.current.panTo([panToCoords.lat, panToCoords.lng], { animate: true, duration: 0.8 });
+  }, [panToCoords]);
+
+  return (
+    <div className="relative w-full h-full isolate">
+      <div ref={containerRef} className="w-full h-full" />
+
+      {/* Unified map controls — zoom + center-on-user as a single styled group */}
+      <div className="absolute top-2.5 right-2.5 z-[1001] flex flex-row rounded-xl overflow-hidden shadow border border-slate-200 dark:border-zinc-600">
+        <button
+          onClick={() => mapRef.current?.zoomIn()}
+          className="w-8 h-8 flex items-center justify-center bg-white dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-600 transition-colors text-lg font-light leading-none"
+          aria-label="Zoom in"
+        >+</button>
+        <div className="w-px bg-slate-200 dark:bg-zinc-600" />
+        <button
+          onClick={() => mapRef.current?.zoomOut()}
+          className="w-8 h-8 flex items-center justify-center bg-white dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-600 transition-colors text-lg font-light leading-none"
+          aria-label="Zoom out"
+        >−</button>
+        {onCenterOnUser && (
+          <>
+            <div className="w-px bg-slate-200 dark:bg-zinc-600" />
+            <button
+              onClick={onCenterOnUser}
+              disabled={geoLoading}
+              className="w-8 h-8 flex items-center justify-center bg-white dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-600 disabled:opacity-40 transition-colors"
+              aria-label="Center on my location"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" strokeWidth="2.2"
+                   strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <line x1="12" y1="2"  x2="12" y2="6"/>
+                <line x1="12" y1="18" x2="12" y2="22"/>
+                <line x1="2"  y1="12" x2="6"  y2="12"/>
+                <line x1="18" y1="12" x2="22" y2="12"/>
+              </svg>
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
