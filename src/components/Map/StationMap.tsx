@@ -235,17 +235,19 @@ export default function StationMap({
   }, [userLocation]);
 
   // ── 7. Fly to coords (with optional zoom change) ──────────────────────────
+  // Guard against isVisible: Leaflet computes NaN pixel coords on a hidden (0×0) container.
+  // Including isVisible as a dependency means the effect re-runs on show, so the fly still happens.
   useEffect(() => {
-    if (!flyToCoords || !mapRef.current) return;
+    if (!flyToCoords || !mapRef.current || !isVisible) return;
     const { lat, lng, zoom } = flyToCoords;
     mapRef.current.flyTo([lat, lng], zoom ?? mapRef.current.getZoom(), { duration: 1.2 });
-  }, [flyToCoords]);
+  }, [flyToCoords, isVisible]);
 
   // ── 8. Pan to coords (no zoom change) ────────────────────────────────────
   useEffect(() => {
-    if (!panToCoords || !mapRef.current) return;
+    if (!panToCoords || !mapRef.current || !isVisible) return;
     mapRef.current.panTo([panToCoords.lat, panToCoords.lng], { animate: true, duration: 0.8 });
-  }, [panToCoords]);
+  }, [panToCoords, isVisible]);
 
   return (
     <div className="relative w-full h-full isolate">

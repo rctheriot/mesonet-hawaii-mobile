@@ -122,7 +122,7 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
           <div className="flex gap-1.5">
             <button
               onClick={() => setSortBy('default')}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                 sortBy === 'default'
                   ? 'bg-slate-700 dark:bg-zinc-300 text-white dark:text-zinc-900'
                   : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700'
@@ -141,13 +141,13 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
                 }
               }}
               disabled={geoLoading}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors disabled:opacity-50 ${
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors disabled:opacity-50 ${
                 sortBy === 'nearme'
                   ? 'bg-slate-700 dark:bg-zinc-300 text-white dark:text-zinc-900'
                   : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700'
               }`}
             >
-              {geoLoading ? 'Locating…' : '⊙ Near Me'}
+              {geoLoading ? 'Locating…' : 'Near Me'}
             </button>
           </div>
           <select

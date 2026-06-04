@@ -24,7 +24,7 @@ const DEFAULTS: Settings = {
   lastStationId: null,
   panelHeightRatio: 0.5,
   homeVarId: 'RF_1_Tot300s',
-  units: 'metric',
+  units: 'imperial',
   mapMode: 'RF_1_Tot300s',
   homeView: 'list',
 };

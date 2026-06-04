@@ -107,7 +107,7 @@ export default function StationPanel({ station, monitorData, onClose, onHeightCh
             </div>
             <p className="text-base text-slate-500 dark:text-zinc-400">
               {station.island ?? 'Hawaii'}
-              {lastUpdated && <span className="text-slate-400 dark:text-zinc-500"> · Updated {lastUpdated}</span>}
+              {lastUpdated && <span className="text-slate-500 dark:text-zinc-400"> · {lastUpdated}</span>}
             </p>
           </div>
         </div>
