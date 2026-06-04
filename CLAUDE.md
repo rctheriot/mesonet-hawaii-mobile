@@ -4,6 +4,16 @@
 - **Claude Sonnet** — default for all tasks: feature work, bug fixes, refactoring, code review
 - **Claude Opus** — use for complex architectural decisions or when Sonnet is struggling with a multi-file problem
 
+## Issue Tiers
+Issues are tracked on GitHub and labeled by tier. Each tier reflects implementation effort and readiness to build.
+
+- **Tier 1** — Quick fixes. Self-contained, low-risk, ~1–3 hours each. Can be grouped into a single branch. No design input or stakeholder decisions needed.
+- **Tier 2** — Medium effort. Each gets its own branch. Requires more thought or investigation but is buildable with existing data and APIs. May need a brief planning discussion before starting.
+- **Tier 3** — Significant effort. Do not open a branch without a planning conversation first. Requires stakeholder input, design decisions, or external API research before implementation begins.
+- **Tier 4** — Out of scope for current prototype phase. Logged for visibility. Requires partnerships, external datasets, or is a fundamentally different product scope.
+
+See GitHub Issues at https://github.com/rctheriot/mesonet-hawaii-mobile/issues for the full list.
+
 ## What This Is
 A mobile-first PWA for browsing real-time Hawaii weather station data from the HCDP (Hawaii Climate Data Portal) Mesonet network. Built as a prototype for stakeholder review.
 
