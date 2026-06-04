@@ -198,6 +198,10 @@ export default function HomeScreen() {
   const [flyTo, setFlyTo]   = useState<{ lat: number; lng: number; zoom?: number } | undefined>();
   const [panTo, setPanTo]   = useState<{ lat: number; lng: number } | undefined>();
 
+  // Request location on mount so distance shows on station cards automatically.
+  // If permission was already granted the browser returns silently; otherwise it prompts.
+  useEffect(() => { requestLocation(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (coords) setFlyTo({ lat: coords.latitude, lng: coords.longitude, zoom: 11 });
   }, [coords]);
