@@ -115,7 +115,7 @@ function rainConfig(units: UnitSystem): GradientConfig {
 export default function MapLegend({ mode, units }: MapLegendProps) {
   if (mode === 'status') {
     return (
-      <div className="absolute bottom-3 left-3 z-[1001] bg-white/90 dark:bg-zinc-800/90 backdrop-blur rounded-xl px-3 py-2 shadow border border-slate-200 dark:border-zinc-700 text-xs text-slate-700 dark:text-zinc-300">
+      <div className="absolute bottom-3 left-3 z-[40] bg-white/90 dark:bg-zinc-800/90 backdrop-blur rounded-xl px-3 py-2 shadow border border-slate-200 dark:border-zinc-700 text-xs text-slate-700 dark:text-zinc-300">
         <p className="font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide text-[10px] mb-1">Station Status</p>
         {STATUS_ENTRIES.map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1.5 mt-0.5">
@@ -137,7 +137,7 @@ export default function MapLegend({ mode, units }: MapLegendProps) {
                                rainConfig(units);
 
   return (
-    <div className="absolute bottom-3 left-3 z-[1001] bg-white/90 dark:bg-zinc-800/90 backdrop-blur rounded-xl px-3 py-2 shadow border border-slate-200 dark:border-zinc-700 text-xs text-slate-700 dark:text-zinc-300 w-36">
+    <div className="absolute bottom-3 left-3 z-[40] bg-white/90 dark:bg-zinc-800/90 backdrop-blur rounded-xl px-3 py-2 shadow border border-slate-200 dark:border-zinc-700 text-xs text-slate-700 dark:text-zinc-300 w-36">
       <p className="font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide text-[10px] mb-1.5">{cfg.title}</p>
       <div className="h-2.5 rounded-full w-full" style={{ background: cfg.gradient }} />
       <div className="flex justify-between mt-1 text-[10px] text-slate-500 dark:text-zinc-400">

@@ -254,7 +254,7 @@ export default function StationMap({
       <div ref={containerRef} className="w-full h-full" />
 
       {/* Unified map controls — zoom + center-on-user as a single styled group */}
-      <div className="absolute top-2.5 right-2.5 z-[1001] flex flex-row rounded-xl overflow-hidden shadow border border-slate-200 dark:border-zinc-600">
+      <div className="absolute top-2.5 right-2.5 z-[40] flex flex-row rounded-xl overflow-hidden shadow border border-slate-200 dark:border-zinc-600">
         <button
           onClick={() => mapRef.current?.zoomIn()}
           className="w-8 h-8 flex items-center justify-center bg-white dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-600 transition-colors text-lg font-light leading-none"

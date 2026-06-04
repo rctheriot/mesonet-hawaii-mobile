@@ -20,7 +20,7 @@ export default function Rainfall24hrCard({ stationId, varId, selectedColor, onSe
   return (
     <button
       onClick={onSelect}
-      className={`text-left p-3 rounded-lg border transition-colors ${
+      className={`w-full h-full text-left p-3 rounded-lg border transition-colors ${
         selectedColor === 'sky'
           ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
           : selectedColor === 'amber'
