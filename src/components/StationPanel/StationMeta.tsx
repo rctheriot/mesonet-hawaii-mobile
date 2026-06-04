@@ -1,5 +1,6 @@
 import type { Station, StationMonitor } from '../../types/api';
 import { stationStatusKey, STATUS_BADGE, STATUS_LABEL } from '../../theme';
+import { useAppContext } from '../../context/AppContext';
 
 interface StationMetaProps {
   station: Station;
@@ -7,12 +8,20 @@ interface StationMetaProps {
 }
 
 export default function StationMeta({ station, monitorData }: StationMetaProps) {
+  const { settings } = useAppContext();
   const statusKey = stationStatusKey(station, monitorData);
+
+  const elevationDisplay = station.elevation != null
+    ? settings.units === 'imperial'
+      ? `${Math.round(station.elevation * 3.28084)} ft`
+      : `${station.elevation} m`
+    : undefined;
+
   const fields = [
     { label: 'ID',        value: station.station_id },
     { label: 'Network',   value: station.network },
     { label: 'Island',    value: station.island },
-    { label: 'Elevation', value: station.elevation != null ? `${station.elevation} m` : undefined },
+    { label: 'Elevation', value: elevationDisplay },
     { label: 'Latitude',  value: station.lat?.toFixed(5) },
     { label: 'Longitude', value: station.lng?.toFixed(5) },
   ].filter(f => f.value != null);

@@ -11,10 +11,11 @@ interface StationCardProps {
   monitorData: Record<string, StationMonitor>;
   varId: string | null;    // standard_name to display; null = show first available
   rainfallMap?: Map<string, { value: number; units: string }>;
+  distanceKm?: number;
   onClick: () => void;
 }
 
-export default function StationCard({ station, monitorData, varId, rainfallMap, onClick }: StationCardProps) {
+export default function StationCard({ station, monitorData, varId, rainfallMap, distanceKm, onClick }: StationCardProps) {
   const { data: measurements } = useLatestMeasurements(station.station_id);
   const { settings } = useAppContext();
   const statusKey = stationStatusKey(station, monitorData);
@@ -73,25 +74,35 @@ export default function StationCard({ station, monitorData, varId, rainfallMap, 
       {/* Status dot */}
       <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_DOT[statusKey]}`} />
 
-      {/* Station name + island + elevation */}
+      {/* Station name + island + distance + elevation */}
       <div className="flex-1 min-w-0">
         <p className="text-base font-semibold text-slate-900 dark:text-zinc-100 leading-tight">
           {station.full_name ?? station.name ?? station.station_id}
         </p>
         <p className="text-sm text-slate-400 dark:text-zinc-500 mt-0.5 truncate">
           {station.island ?? 'Hawaii'}
+          {distanceKm != null && (
+            <span className="ml-1.5">
+              · {settings.units === 'imperial'
+                ? `${(distanceKm * 0.621371).toFixed(1)} mi`
+                : `${distanceKm.toFixed(1)} km`}
+            </span>
+          )}
         </p>
         {station.elevation != null && (
-          <p className="text-sm text-slate-400 dark:text-zinc-500">
+          <p className="flex items-center gap-1 text-xs text-slate-400 dark:text-zinc-500 mt-0.5">
+            <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
+              <path d="M6 1 L11 10 L1 10 Z" />
+            </svg>
             {settings.units === 'imperial'
-              ? `${Math.round(station.elevation * 3.28084)} ft`
-              : `${Math.round(station.elevation)} m`}
+              ? `${Math.round(station.elevation * 3.28084).toLocaleString()} ft`
+              : `${Math.round(station.elevation).toLocaleString()} m`}
           </p>
         )}
       </div>
 
-      {/* Primary reading — right-aligned */}
-      <div className="flex-shrink-0 text-right">
+      {/* Primary reading — right-aligned, vertically centered */}
+      <div className="flex-shrink-0 text-right self-center">
         {isRainfallSelected ? (
           <span className="text-2xl font-bold text-slate-900 dark:text-zinc-100 leading-none tabular-nums">
             {isRainfallLoading
@@ -108,7 +119,7 @@ export default function StationCard({ station, monitorData, varId, rainfallMap, 
               {converted.unit && <span className="text-sm font-normal text-slate-400 dark:text-zinc-500 ml-0.5">{converted.unit}</span>}
             </span>
             {timestamp && (
-              <p className="text-xs text-slate-400 dark:text-zinc-500 mt-0.5">{relativeTime(timestamp)}</p>
+              <p className="text-sm text-slate-400 dark:text-zinc-500 mt-0.5">{relativeTime(timestamp)}</p>
             )}
           </>
         ) : (

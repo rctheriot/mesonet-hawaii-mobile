@@ -5,7 +5,7 @@ import { useLatestMeasurements } from '../hooks/useMeasurements';
 import { useAppContext } from '../context/AppContext';
 import { useChartVars } from '../hooks/useChartVars';
 import { ALLOWED_VARIABLES, convertValue, formatValue, getVariableLabel } from '../utils/units';
-import { isStaleTimestamp } from '../utils/time';
+import { isStaleTimestamp, relativeTime } from '../utils/time';
 import { stationStatusKey, STATUS_BADGE, STATUS_LABEL } from '../theme';
 import HistoryChart from '../components/StationPanel/HistoryChart';
 import StationMeta from '../components/StationPanel/StationMeta';
@@ -122,7 +122,7 @@ export default function StationDetail() {
           </div>
 
           {/* Island + status badge */}
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
             <p className="text-base text-slate-500 dark:text-zinc-400">{station.island ?? 'Hawaii'}</p>
             <span className={`text-sm px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[statusKey]}`}>
               {STATUS_LABEL[statusKey]}
@@ -133,6 +133,12 @@ export default function StationDetail() {
               </span>
             )}
           </div>
+          {/* Last reading timestamp — shown below status badges so users know how fresh the data is */}
+          {newestTimestamp && (
+            <p className="text-sm text-slate-500 dark:text-zinc-400 mb-4">
+              Updated {relativeTime(newestTimestamp)}
+            </p>
+          )}
 
           {/* Big primary reading */}
           {readingsLoading ? (

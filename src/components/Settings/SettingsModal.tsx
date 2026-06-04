@@ -58,11 +58,11 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-slate-800 dark:text-zinc-200">Units</p>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">Metric (°C, mm, m/s)</p>
-              <p className="text-xs text-slate-500 dark:text-zinc-400">Imperial (°F, in, mph)</p>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">Imperial (°F, in, mph)</p>
+              <p className="text-xs text-slate-500 dark:text-zinc-400">Metric (°C, mm, m/s)</p>
             </div>
             <div className="flex bg-slate-100 dark:bg-zinc-800 rounded-lg p-0.5 gap-0.5">
-              {(['metric', 'imperial'] as const).map(sys => (
+              {(['imperial', 'metric'] as const).map(sys => (
                 <button
                   key={sys}
                   onClick={() => updateSettings({ units: sys })}

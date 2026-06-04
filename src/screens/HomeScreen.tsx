@@ -5,7 +5,7 @@ import { useAppContext } from '../context/AppContext';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
 import StationCard from '../components/StationCard';
-import StationMap from '../components/Map/StationMap';
+import StationMap, { haversineKm } from '../components/Map/StationMap';
 import StationPanel from '../components/StationPanel/StationPanel';
 import MapLegend, { type MapMode } from '../components/Map/MapLegend';
 import { convertValue } from '../utils/units';
@@ -44,6 +44,8 @@ export default function HomeScreen() {
       .map(id => stations.find(s => s.station_id === id))
       .filter((s): s is Station => s != null);
   }, [favorites, stations]);
+
+  const [favSort, setFavSort] = useState<'alpha' | 'value' | 'distance'>('alpha');
 
   // Per-station latest measurements for map colors — reuses the same React Query cache
   // as StationCard's useLatestMeasurements, so no extra network requests when list was shown first.
@@ -138,6 +140,59 @@ export default function HomeScreen() {
     }
     return map;
   }, [latestQueries, rainfallQueries, homeVarId, myStations, settings.units]);
+
+  // Precompute distances from user to each favorite station (km).
+  // Passed to StationCard for display and used for distance sort.
+  // Empty map when location hasn't been granted yet.
+  const distanceMap = useMemo(() => {
+    if (!coords) return new Map<string, number>();
+    return new Map(myStations.map(s => [
+      s.station_id,
+      haversineKm(coords.latitude, coords.longitude, s.lat, s.lng),
+    ]));
+  }, [myStations, coords]);
+
+  // Precompute the raw (metric) value of the selected variable for each station.
+  // Used to sort by value (highest first). Reuses the same query cache as varColors
+  // so no extra network requests are made.
+  const valueMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (homeVarId === 'RF_1_Tot300s') {
+      rainfallQueries.forEach((q, i) => {
+        const s = myStations[i];
+        if (s && q.data != null) map.set(s.station_id, q.data.total);
+      });
+    } else {
+      latestQueries.forEach((q, i) => {
+        const s = myStations[i];
+        const m = q.data?.find(r => r.variable === homeVarId);
+        if (s && m?.value != null) map.set(s.station_id, Number(m.value));
+      });
+    }
+    return map;
+  }, [latestQueries, rainfallQueries, homeVarId, myStations]);
+
+  // Sort favorites list by the selected sort mode.
+  // Distance sort falls back to insertion order if location isn't available yet
+  // (requestLocation() is triggered when the user selects Distance in the dropdown).
+  const sortedStations = useMemo(() => {
+    if (favSort === 'alpha') {
+      return [...myStations].sort((a, b) =>
+        (a.full_name ?? a.name ?? a.station_id).localeCompare(b.full_name ?? b.name ?? b.station_id)
+      );
+    }
+    if (favSort === 'value') {
+      return [...myStations].sort((a, b) =>
+        (valueMap.get(b.station_id) ?? -Infinity) - (valueMap.get(a.station_id) ?? -Infinity)
+      );
+    }
+    if (favSort === 'distance' && coords) {
+      return [...myStations].sort((a, b) =>
+        (distanceMap.get(a.station_id) ?? Infinity) - (distanceMap.get(b.station_id) ?? Infinity)
+      );
+    }
+    return myStations;
+  }, [myStations, favSort, coords, distanceMap, valueMap]);
 
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
   const [flyTo, setFlyTo]   = useState<{ lat: number; lng: number; zoom?: number } | undefined>();
@@ -298,14 +353,30 @@ export default function HomeScreen() {
             {homeView === 'list' && (
               <div className="absolute inset-0 overflow-y-auto">
                 <div className="flex flex-col gap-3 p-4">
-                  <p className="text-sm font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide px-1">Saved Stations</p>
-                  {myStations.map(station => (
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-sm font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide">Saved Stations</p>
+                    <select
+                      value={favSort}
+                      onChange={e => {
+                        const val = e.target.value as typeof favSort;
+                        if (val === 'distance' && !coords) requestLocation();
+                        setFavSort(val);
+                      }}
+                      className="text-xs bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    >
+                      <option value="alpha">A–Z</option>
+                      <option value="value">By Value</option>
+                      <option value="distance">Distance</option>
+                    </select>
+                  </div>
+                  {sortedStations.map(station => (
                     <StationCard
                       key={station.station_id}
                       station={station}
                       monitorData={monitorData}
                       varId={homeVarId}
                       rainfallMap={rainfallMap}
+                      distanceKm={distanceMap.get(station.station_id)}
                       onClick={() => navigate(`/station/${station.station_id}`)}
                     />
                   ))}
