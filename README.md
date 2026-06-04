@@ -25,16 +25,13 @@ npm run dev
 
 Runs at `http://localhost:5173`.
 
-## Build & Deploy
+## Build
 
 ```bash
 npm run build
-rsync -avz --delete dist/ exouser@<domain>:/home/exouser/mesonet/
 ```
 
-Served via nginx on a Jetstream2 VM with Let's Encrypt SSL.
-- nginx config: `/etc/nginx/sites-available/mesonet`
-- Files served from: `/home/exouser/mesonet/` (requires `chmod o+x /home/exouser`)
+Output goes to `dist/`.
 
 ## Tech Stack
 
@@ -44,7 +41,7 @@ Served via nginx on a Jetstream2 VM with Let's Encrypt SSL.
 | TypeScript | 5.9.3 | Type safety |
 | Vite | 7.3.1 | Build tool |
 | Tailwind CSS v4 | 4.2.1 | Styling |
-| MapLibre GL JS | 5.20.1 | Map rendering |
+| Leaflet | 1.9.4 | Map rendering |
 | TanStack React Query | 5.90.21 | Data fetching & caching |
 | Recharts | 3.8.0 | Historical data charts |
 | react-router-dom | 7.13.1 | Client-side routing |

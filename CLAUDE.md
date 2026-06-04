@@ -1,12 +1,16 @@
 # Hawaii Mesonet Mobile App — Claude Context
 
+## Claude Model Guidance
+- **Claude Sonnet** — default for all tasks: feature work, bug fixes, refactoring, code review
+- **Claude Opus** — use for complex architectural decisions or when Sonnet is struggling with a multi-file problem
+
 ## What This Is
 A mobile-first PWA for browsing real-time Hawaii weather station data from the HCDP (Hawaii Climate Data Portal) Mesonet network. Built as a prototype for stakeholder review.
 
 ## Tech Stack
 - **React 19 + TypeScript + Vite 7**
 - **Tailwind CSS v4** — configured via `src/index.css` (no `tailwind.config.js`). Requires `@tailwindcss/vite` plugin in `vite.config.ts`. Dark mode via `@custom-variant dark`. Custom breakpoint `xs` at 400px defined in `@theme`.
-- **MapLibre GL JS** — map rendering, custom DOM markers, CartoDB Positron (light) / Dark Matter (dark) tile styles
+- **Leaflet** — map rendering, custom DivIcon markers, CartoDB raster tiles (light_all / dark_all)
 - **TanStack React Query** — data fetching and caching
 - **Recharts** — historical data charts in station panel
 - **vite-plugin-pwa** — service worker generation (Workbox) and PWA manifest. Note: v1.2.0 supports Vite up to v7 only. Do not upgrade Vite to v8 until a compatible vite-plugin-pwa version (≥30 days old) is available.
@@ -24,7 +28,8 @@ A mobile-first PWA for browsing real-time Hawaii weather station data from the H
 | react + react-dom | 19.2.4 |
 | react-router-dom | 7.13.1 |
 | @tanstack/react-query | 5.90.21 |
-| maplibre-gl | 5.20.1 |
+| leaflet | 1.9.4 |
+| @types/leaflet | 1.9.21 |
 | recharts | 3.8.0 |
 | tailwindcss | 4.2.1 |
 | vite | 7.3.1 |
@@ -62,22 +67,31 @@ Central state hub. Owns: selected station, view (map/list), dark mode, flyTo/pan
 
 ### Map (StationMap.tsx)
 - Map is **always mounted**, hidden via `className="hidden"` in list view to preserve camera state.
-- Markers are plain DOM elements managed in `markersRef`. `markerMetaRef` stores `{ color, hollow }` per station — must stay in sync with visual state or highlight effect will use stale colors.
+- Markers are `L.Marker` instances with custom `DivIcon`s managed in `markersRef`. `markerMetaRef` stores `{ color, hollow }` per station — must stay in sync with visual state or highlight effect will use stale colors.
 - `onSelectStation` is stored in a ref (`onSelectStationRef`) so it's not a dependency of the markers effect — prevents markers from resetting on every render.
-- Selected station marker turns sky blue (`#0ea5e9`).
-- `ResizeObserver` is intentionally removed — calling `map.resize()` caused flickering. The CSS `bottom` offset is applied to the container directly.
-- When switching back to map view with a selected station, a `useEffect` re-fires `setPanTo` because MapLibre ignores `easeTo` on hidden containers.
+- Selected station uses `selectedPinIcon` from `mapIcons.ts` (sky blue pin).
+- Leaflet requires `map.invalidateSize()` after a hidden→visible transition — called in a `useEffect` watching `isVisible`, and also debounced when panel height changes.
+- Variable coloring mode: when a map variable is selected, markers show colored pill labels via `stationDivIcon()`. Stations with no data get a gray dot. `MapLegend.tsx` renders the color scale below the map controls.
+- Map modes defined as `MapMode` type in `StationMap.tsx`: `status` | variable standard_names (e.g. `Tair_1_Avg`, `WS_1_Avg`).
 
 ### StationPanel
 - Drag-to-resize using pointer capture events. Height stored as ratio in `useSettings` so it restores correctly across different screen sizes.
 - `onHeightChange` fires in real-time during drag so map/list containers shrink to avoid overlap.
 - `isMountedRef` — the style-swap effect skips on first mount to prevent wiping markers before they're added.
+- Readings rendered via `ReadingsGrid` — a shared component that groups measurements by category, merges wind speed/direction, and handles the 24hr rainfall card.
+- Chart variable selection managed by `useChartVars` hook — supports two simultaneous variables (dual-series chart). Selection persists across station navigation when the variable exists on the new station.
 
 ### PWAInstallPrompt
 - Standalone React component — does not import from `vite-plugin-pwa`.
 - Uses browser `beforeinstallprompt` event for Android native install.
 - iOS install is always manual (Safari share sheet instructions).
 - Dismissed state stored in `sessionStorage` under `pwa-prompt-dismissed`.
+
+### AppContext
+Provides app-wide state without prop-drilling. Owns: `settings` (via `useSettings`), `favorites` / `toggleFavorite` (via `useFavorites`), and `chartVars` / `setChartVars` (two-variable chart selection). Use `useAppContext()` to access from any component.
+
+### StationCard
+Used in list view (`StationList`) and the HomeScreen favorites list. Shows station name, island, status dot, relative last-report time, and one variable reading (the currently selected `varId`). Fetches its own measurements via `useLatestMeasurements`.
 
 ### Persistence (localStorage)
 - `useSettings` — darkMode, view, lastStationId, panelHeightRatio
@@ -89,6 +103,16 @@ npm run build
 rsync -avz --delete dist/ exouser@<domain>:/home/exouser/mesonet/
 ```
 Served via nginx on a Jetstream2 VM with Let's Encrypt SSL. nginx config at `/etc/nginx/sites-available/mesonet`. Files at `/home/exouser/mesonet/` (requires `chmod o+x /home/exouser`).
+
+## Screens
+- **HomeScreen** — favorites map view. Shows a Leaflet map filtered to favorited stations with variable coloring, plus a scrollable favorites list below. Falls back to an empty-state prompt when no favorites exist.
+- **ExploreScreen** — full station list + map. Stations sortable by distance (uses `haversineKm` exported from `StationMap.tsx`). Selecting a station opens the `StationPanel`.
+- **StationDetail** — full-page station view (used on larger screens or direct navigation). Same panel content as `StationPanel`.
+
+## Utility Modules
+- `src/utils/mapColor.ts` — per-variable color scale interpolation (`stopsToHex`) and CSS gradient strings for the map legend. Defines color stops for temperature, wind speed, humidity, soil moisture, solar radiation, and rainfall.
+- `src/utils/time.ts` — `relativeTime(ts)` (e.g. "5m ago") and `isStaleTimestamp(ts)` (>24h check).
+- `src/utils/units.ts` — unit conversion, `formatValue`, `ALLOWED_VARIABLES`, `groupByCategory`, `mergeWindReadings`.
 
 ## Island Name Derivation
 The API has no `island` field. Island names are derived from lat/lng bounding boxes in `src/api/stations.ts → islandFromCoords()`.
