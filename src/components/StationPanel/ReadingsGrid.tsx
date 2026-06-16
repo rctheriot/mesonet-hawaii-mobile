@@ -3,6 +3,7 @@ import { useAppContext } from '../../context/AppContext';
 import { convertValue, formatValue, groupByCategory, mergeWindReadings } from '../../utils/units';
 import Rainfall24hrCard from './Rainfall24hrCard';
 import VariableInfoModal from '../Glossary/VariableInfoModal';
+import HelpModal from '../Help/HelpModal';
 import type { Measurement } from '../../types/api';
 import type { ChartVarPair } from '../../types/ui';
 
@@ -35,8 +36,9 @@ function InfoButton({ varId, onClick }: { varId: string; onClick: (varId: string
 }
 
 export default function ReadingsGrid({ stationId, readings, selectedVarIds, onSelectVar }: ReadingsGridProps) {
-  const { settings } = useAppContext();
+  const { settings, openInstallPrompt } = useAppContext();
   const [infoVarId, setInfoVarId] = useState<string | null>(null);
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
 
   if (readings.length === 0) {
     return <p className="text-slate-500 dark:text-zinc-400 text-base">No readings available.</p>;
@@ -108,7 +110,19 @@ export default function ReadingsGrid({ stationId, readings, selectedVarIds, onSe
       ))}
 
       {infoVarId && (
-        <VariableInfoModal varId={infoVarId} onClose={() => setInfoVarId(null)} />
+        <VariableInfoModal
+          varId={infoVarId}
+          onClose={() => setInfoVarId(null)}
+          onOpenGlossary={() => { setInfoVarId(null); setGlossaryOpen(true); }}
+        />
+      )}
+
+      {glossaryOpen && (
+        <HelpModal
+          initialTab="glossary"
+          onClose={() => setGlossaryOpen(false)}
+          onInstallApp={() => { setGlossaryOpen(false); openInstallPrompt(); }}
+        />
       )}
     </div>
   );

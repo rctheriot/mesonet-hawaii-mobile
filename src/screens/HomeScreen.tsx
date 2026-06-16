@@ -216,6 +216,7 @@ export default function HomeScreen() {
   }
   const [panelHeight, setPanelHeight] = useState(() => Math.round(window.innerHeight * panelHeightRatio));
   const [helpOpen, setHelpOpen]         = useState(false);
+  const [helpInitialTab, setHelpInitialTab] = useState<'stations' | 'explore' | 'glossary' | 'install' | 'location'>('stations');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoVarId, setInfoVarId]       = useState<string | null>(null);
 
@@ -415,8 +416,14 @@ export default function HomeScreen() {
       </div>
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
-      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} onInstallApp={() => { setHelpOpen(false); openInstallPrompt(); }} />}
-      {infoVarId && <VariableInfoModal varId={infoVarId} onClose={() => setInfoVarId(null)} />}
+      {helpOpen && <HelpModal initialTab={helpInitialTab} onClose={() => setHelpOpen(false)} onInstallApp={() => { setHelpOpen(false); openInstallPrompt(); }} />}
+      {infoVarId && (
+        <VariableInfoModal
+          varId={infoVarId}
+          onClose={() => setInfoVarId(null)}
+          onOpenGlossary={() => { setInfoVarId(null); setHelpInitialTab('glossary'); setHelpOpen(true); }}
+        />
+      )}
     </div>
   );
 }

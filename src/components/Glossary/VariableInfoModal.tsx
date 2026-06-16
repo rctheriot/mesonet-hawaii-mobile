@@ -4,9 +4,10 @@ import { useAppContext } from '../../context/AppContext';
 interface VariableInfoModalProps {
   varId: string;
   onClose: () => void;
+  onOpenGlossary?: () => void;
 }
 
-export default function VariableInfoModal({ varId, onClose }: VariableInfoModalProps) {
+export default function VariableInfoModal({ varId, onClose, onOpenGlossary }: VariableInfoModalProps) {
   const { settings } = useAppContext();
   const entry = VARIABLE_GLOSSARY[varId];
 
@@ -68,6 +69,16 @@ export default function VariableInfoModal({ varId, onClose }: VariableInfoModalP
               <div className="pt-1 border-t border-slate-100 dark:border-zinc-800">
                 <p className="text-xs text-slate-400 dark:text-zinc-500">{resolved.unitNote}</p>
               </div>
+
+              {/* Full glossary link — only shown when opened outside of HelpModal */}
+              {onOpenGlossary && (
+                <button
+                  onClick={onOpenGlossary}
+                  className="w-full text-center text-xs text-sky-500 dark:text-sky-400 hover:text-sky-600 dark:hover:text-sky-300 transition-colors pt-1"
+                >
+                  View full glossary →
+                </button>
+              )}
             </>
           ) : (
             <p className="text-slate-500 dark:text-zinc-400">
