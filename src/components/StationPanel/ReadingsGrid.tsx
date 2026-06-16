@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { convertValue, formatValue, groupByCategory, mergeWindReadings } from '../../utils/units';
 import Rainfall24hrCard from './Rainfall24hrCard';
+import VariableInfoModal from '../Glossary/VariableInfoModal';
+import HelpModal from '../Help/HelpModal';
 import type { Measurement } from '../../types/api';
 import type { ChartVarPair } from '../../types/ui';
 
@@ -16,8 +19,26 @@ interface ReadingsGridProps {
 // Pure rendering component for the station readings grid.
 // No data fetching — receives already-processed measurements from the caller.
 // Used by both LatestReadings (explore panel) and StationDetail (full page).
+function InfoButton({ varId, onClick }: { varId: string; onClick: (varId: string) => void }) {
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onClick(varId); }}
+      className="absolute top-1.5 right-1.5 text-slate-300 dark:text-zinc-600 hover:text-sky-500 dark:hover:text-sky-400 transition-colors p-0.5"
+      aria-label="Variable info"
+    >
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="8" cy="8" r="7" />
+        <circle cx="8" cy="5.5" r="0.75" fill="currentColor" stroke="none" />
+        <line x1="8" y1="8" x2="8" y2="12" strokeLinecap="round" />
+      </svg>
+    </button>
+  );
+}
+
 export default function ReadingsGrid({ stationId, readings, selectedVarIds, onSelectVar }: ReadingsGridProps) {
-  const { settings } = useAppContext();
+  const { settings, openInstallPrompt } = useAppContext();
+  const [infoVarId, setInfoVarId] = useState<string | null>(null);
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
 
   if (readings.length === 0) {
     return <p className="text-slate-500 dark:text-zinc-400 text-base">No readings available.</p>;
@@ -42,13 +63,15 @@ export default function ReadingsGrid({ stationId, readings, selectedVarIds, onSe
 
               if (m.variable === 'RF_1_Tot300s') {
                 return (
-                  <Rainfall24hrCard
-                    key={m.variable}
-                    stationId={stationId}
-                    varId={m.variable}
-                    selectedColor={selColor}
-                    onSelect={() => onSelectVar(m.variable)}
-                  />
+                  <div key={m.variable} className="relative">
+                    <Rainfall24hrCard
+                      stationId={stationId}
+                      varId={m.variable}
+                      selectedColor={selColor}
+                      onSelect={() => onSelectVar(m.variable)}
+                    />
+                    <InfoButton varId={m.variable} onClick={setInfoVarId} />
+                  </div>
                 );
               }
 
@@ -56,33 +79,51 @@ export default function ReadingsGrid({ stationId, readings, selectedVarIds, onSe
               const converted = convertValue(Number(m.value), m.units ?? '', settings.units, m.variable);
 
               return (
-                <button
-                  key={m.variable}
-                  onClick={() => onSelectVar(m.variable)}
-                  className={`text-left p-3 rounded-lg border transition-colors ${
-                    selColor === 'sky'
-                      ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
-                      : selColor === 'amber'
-                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30'
-                      : 'border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 hover:border-slate-400 dark:hover:border-slate-500'
-                  }`}
-                >
-                  <div className="text-sm text-slate-500 dark:text-zinc-400 leading-tight">
-                    {wind ? 'Wind' : (m.variable_display_name ?? m.variable)}
-                  </div>
-                  <div className="text-lg font-semibold text-slate-900 dark:text-zinc-100">
-                    {wind?.compass && <span className="mr-1">{wind.compass}</span>}
-                    {formatValue(converted.value, m.variable)}
-                    {converted.unit && (
-                      <span className="text-sm text-slate-500 dark:text-zinc-400 ml-1">{converted.unit}</span>
-                    )}
-                  </div>
-                </button>
+                <div key={m.variable} className="relative">
+                  <button
+                    onClick={() => onSelectVar(m.variable)}
+                    className={`w-full h-full text-left p-3 rounded-lg border transition-colors ${
+                      selColor === 'sky'
+                        ? 'border-sky-500 bg-sky-50 dark:bg-sky-900/30'
+                        : selColor === 'amber'
+                        ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/30'
+                        : 'border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 hover:border-slate-400 dark:hover:border-slate-500'
+                    }`}
+                  >
+                    <div className="text-sm text-slate-500 dark:text-zinc-400 leading-tight pr-5">
+                      {wind ? 'Wind' : (m.variable_display_name ?? m.variable)}
+                    </div>
+                    <div className="text-lg font-semibold text-slate-900 dark:text-zinc-100">
+                      {wind?.compass && <span className="mr-1">{wind.compass}</span>}
+                      {formatValue(converted.value, m.variable)}
+                      {converted.unit && (
+                        <span className="text-sm text-slate-500 dark:text-zinc-400 ml-1">{converted.unit}</span>
+                      )}
+                    </div>
+                  </button>
+                  <InfoButton varId={m.variable} onClick={setInfoVarId} />
+                </div>
               );
             })}
           </div>
         </div>
       ))}
+
+      {infoVarId && (
+        <VariableInfoModal
+          varId={infoVarId}
+          onClose={() => setInfoVarId(null)}
+          onOpenGlossary={() => { setInfoVarId(null); setGlossaryOpen(true); }}
+        />
+      )}
+
+      {glossaryOpen && (
+        <HelpModal
+          initialTab="glossary"
+          onClose={() => setGlossaryOpen(false)}
+          onInstallApp={() => { setGlossaryOpen(false); openInstallPrompt(); }}
+        />
+      )}
     </div>
   );
 }

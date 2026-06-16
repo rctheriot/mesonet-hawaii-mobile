@@ -8,6 +8,7 @@ import StationCard from '../components/StationCard';
 import StationMap, { haversineKm } from '../components/Map/StationMap';
 import StationPanel from '../components/StationPanel/StationPanel';
 import MapLegend, { type MapMode } from '../components/Map/MapLegend';
+import VariableInfoModal from '../components/Glossary/VariableInfoModal';
 import { convertValue } from '../utils/units';
 import { tempToHex, windToHex, rhToHex, rainToHex, smToHex, swToHex } from '../utils/mapColor';
 import { useStations, useStationMonitor } from '../hooks/useStations';
@@ -214,8 +215,10 @@ export default function HomeScreen() {
     }
   }
   const [panelHeight, setPanelHeight] = useState(() => Math.round(window.innerHeight * panelHeightRatio));
-  const [helpOpen, setHelpOpen]       = useState(false);
+  const [helpOpen, setHelpOpen]         = useState(false);
+  const [helpInitialTab, setHelpInitialTab] = useState<'stations' | 'explore' | 'glossary' | 'install' | 'location'>('stations');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [infoVarId, setInfoVarId]       = useState<string | null>(null);
 
   const selectedStation: Station | null = myStations.find(s => s.station_id === selectedStationId) ?? null;
 
@@ -302,6 +305,17 @@ export default function HomeScreen() {
               <option key={v.id} value={v.id}>{v.label}</option>
             ))}
           </select>
+          <button
+            onClick={() => setInfoVarId(homeVarId ?? HOME_VAR_OPTIONS[0].id)}
+            className="flex-shrink-0 text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors p-1"
+            aria-label="Variable info"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="8" cy="8" r="7" />
+              <circle cx="8" cy="5.5" r="0.75" fill="currentColor" stroke="none" />
+              <line x1="8" y1="8" x2="8" y2="12" strokeLinecap="round" />
+            </svg>
+          </button>
         </div>
       )}
 
@@ -402,7 +416,14 @@ export default function HomeScreen() {
       </div>
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
-      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} onInstallApp={() => { setHelpOpen(false); openInstallPrompt(); }} />}
+      {helpOpen && <HelpModal initialTab={helpInitialTab} onClose={() => setHelpOpen(false)} onInstallApp={() => { setHelpOpen(false); openInstallPrompt(); }} />}
+      {infoVarId && (
+        <VariableInfoModal
+          varId={infoVarId}
+          onClose={() => setInfoVarId(null)}
+          onOpenGlossary={() => { setInfoVarId(null); setHelpInitialTab('glossary'); setHelpOpen(true); }}
+        />
+      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import StationPanel from '../components/StationPanel/StationPanel';
 import StationList from '../components/StationList/StationList';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
+import VariableInfoModal from '../components/Glossary/VariableInfoModal';
 import { useStations, useStationMonitor } from '../hooks/useStations';
 import { useMapMeasurements, useMapRainfall24hr } from '../hooks/useMeasurements';
 import { useGeolocation } from '../hooks/useGeolocation';
@@ -34,8 +35,10 @@ export default function ExploreScreen() {
   const mapMode = settings.mapMode as MapMode;
   const setMapMode = (mode: MapMode) => updateSettings({ mapMode: mode });
 
-  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpOpen, setHelpOpen]         = useState(false);
+  const [helpInitialTab, setHelpInitialTab] = useState<'stations' | 'explore' | 'glossary' | 'install' | 'location'>('stations');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [infoVarId, setInfoVarId]       = useState<string | null>(null);
   const [selectedStationId, setSelectedStationId] = useState<string | null>(lastStationId);
 
   const { data: stations = [], isLoading, isError } = useStations();
@@ -203,6 +206,19 @@ export default function ExploreScreen() {
             <option key={mode} value={mode}>{label}</option>
           ))}
         </select>
+        {mapMode !== 'status' && (
+          <button
+            onClick={() => setInfoVarId(mapMode)}
+            className="flex-shrink-0 text-slate-400 hover:text-sky-500 dark:hover:text-sky-400 transition-colors p-1"
+            aria-label="Variable info"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <circle cx="8" cy="8" r="7" />
+              <circle cx="8" cy="5.5" r="0.75" fill="currentColor" stroke="none" />
+              <line x1="8" y1="8" x2="8" y2="12" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Content */}
@@ -273,7 +289,14 @@ export default function ExploreScreen() {
       </div>
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
-      {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} onInstallApp={() => { setHelpOpen(false); openInstallPrompt(); }} />}
+      {helpOpen && <HelpModal initialTab={helpInitialTab} onClose={() => setHelpOpen(false)} onInstallApp={() => { setHelpOpen(false); openInstallPrompt(); }} />}
+      {infoVarId && (
+        <VariableInfoModal
+          varId={infoVarId}
+          onClose={() => setInfoVarId(null)}
+          onOpenGlossary={() => { setInfoVarId(null); setHelpInitialTab('glossary'); setHelpOpen(true); }}
+        />
+      )}
     </div>
   );
 }

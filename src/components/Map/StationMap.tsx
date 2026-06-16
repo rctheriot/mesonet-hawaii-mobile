@@ -250,7 +250,7 @@ export default function StationMap({
   }, [panToCoords, isVisible]);
 
   return (
-    <div className="relative w-full h-full isolate">
+    <div className="relative w-full h-full z-0">
       <div ref={containerRef} className="w-full h-full" />
 
       {/* Unified map controls — zoom + center-on-user as a single styled group */}
