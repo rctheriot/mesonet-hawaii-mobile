@@ -12,11 +12,11 @@ interface HelpModalProps {
 type Tab = 'stations' | 'explore' | 'glossary' | 'install' | 'location';
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'stations', label: 'Stations' },
-  { id: 'explore',  label: 'Explore'  },
-  { id: 'glossary', label: 'Glossary' },
-  { id: 'install',  label: 'Install'  },
-  { id: 'location', label: 'Location' },
+  { id: 'stations', label: 'My Stations'      },
+  { id: 'explore',  label: 'Station Network'  },
+  { id: 'glossary', label: 'Glossary'         },
+  { id: 'install',  label: 'Install'          },
+  { id: 'location', label: 'Location'         },
 ];
 
 // Pre-build glossary entries grouped by category, in GROUP_ORDER, for the Glossary tab.
@@ -75,36 +75,57 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'station
             {tab === 'stations' && (
               <>
                 <section className="space-y-1.5">
-                  <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Saved Stations</h3>
+                  <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Your saved stations</h3>
                   <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                    Your home screen shows your saved stations. Tap any station card to see its full readings and history.
-                    Use the variable selector at the top to compare the same measurement across all your saved stations at once.
+                    <span className="font-medium text-slate-700 dark:text-zinc-300">My Stations</span> shows only the stations you've saved.
+                    View them on the map or switch to the list using the toggle at the top.
+                    Tap any station to open its full detail page with current readings and history charts.
                   </p>
                 </section>
                 <section className="space-y-1.5">
-                  <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Saving & Removing</h3>
+                  <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Variable selector</h3>
                   <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                    Tap <span className="font-medium text-slate-700 dark:text-zinc-300">Explore</span> to browse all stations on the map or list.
-                    Open any station and tap <span className="font-medium text-green-600 dark:text-green-400">Save</span> to add it to your home screen.
-                    To remove it, tap <span className="font-medium text-red-600 dark:text-red-400">Unsave</span> from the station page or the map panel.
+                    Use the selector bar below the top bar to color the map and cards by a specific measurement —
+                    rainfall, temperature, wind speed, and more — so you can compare readings across all your saved stations at a glance.
+                  </p>
+                </section>
+                <section className="space-y-1.5">
+                  <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Saving & removing stations</h3>
+                  <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
+                    To add a station, go to <span className="font-medium text-slate-700 dark:text-zinc-300">Station Network</span>, tap any station, then tap the{' '}
+                    <span className="font-medium text-sky-600 dark:text-sky-400">Save</span> button next to the station name.
+                    To remove it, open the station and tap <span className="font-medium text-slate-700 dark:text-zinc-300">Saved</span> to toggle it off.
                   </p>
                 </section>
               </>
             )}
 
             {tab === 'explore' && (
-              <section className="space-y-1.5">
-                <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Map & List</h3>
-                <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  Switch between <span className="font-medium text-slate-700 dark:text-zinc-300">Map</span> and <span className="font-medium text-slate-700 dark:text-zinc-300">List</span> views using the toggle in the top bar.
-                </p>
-                <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  In the list, filter by status or island, and use <span className="font-medium text-slate-700 dark:text-zinc-300">Near Me</span> to sort stations by distance from your location.
-                </p>
-                <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  On the map, tap the crosshair button in the top-left to center on your location.
-                </p>
-              </section>
+              <>
+                <section className="space-y-1.5">
+                  <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Browsing all stations</h3>
+                  <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
+                    <span className="font-medium text-slate-700 dark:text-zinc-300">Station Network</span> shows every station in the Hawaii Mesonet.
+                    Switch between <span className="font-medium text-slate-700 dark:text-zinc-300">Map</span> and <span className="font-medium text-slate-700 dark:text-zinc-300">List</span> views using the toggle at the top.
+                    Tap any station on the map or in the list to open its full detail page.
+                  </p>
+                </section>
+                <section className="space-y-1.5">
+                  <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Map view</h3>
+                  <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
+                    Use the selector bar to color stations by a measurement — temperature, rainfall, wind speed, and more.
+                    Tap the crosshair button to center the map on your current location.
+                    The map stays at your last position when you navigate away and come back.
+                  </p>
+                </section>
+                <section className="space-y-1.5">
+                  <h3 className="font-semibold text-slate-800 dark:text-zinc-200">List view</h3>
+                  <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
+                    Filter stations by island or status. Tap <span className="font-medium text-slate-700 dark:text-zinc-300">Near Me</span> to sort by distance from your location.
+                    Your filter and sort settings are remembered when you return from a station page.
+                  </p>
+                </section>
+              </>
             )}
 
             {tab === 'glossary' && (
