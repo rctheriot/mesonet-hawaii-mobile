@@ -216,7 +216,7 @@ export default function HomeScreen() {
   return (
     <div className="relative w-full h-full bg-white dark:bg-zinc-950 flex flex-col pb-14">
       {/* Top bar */}
-      <div className="flex-shrink-0 relative flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-zinc-900/95 backdrop-blur border-b border-slate-200 dark:border-zinc-800 z-20">
+      <div className="flex-shrink-0 relative flex items-center justify-end px-4 py-3 bg-white/95 dark:bg-zinc-900/95 backdrop-blur border-b border-slate-200 dark:border-zinc-800 z-20">
         {/* Map/List toggle — absolutely centered, only shown when favorites exist */}
         {!isEmpty && (
           <div className="absolute left-1/2 -translate-x-1/2 flex bg-slate-100 dark:bg-zinc-800 rounded-lg p-0.5 gap-0.5">
