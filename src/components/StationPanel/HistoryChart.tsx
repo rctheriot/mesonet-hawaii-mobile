@@ -144,6 +144,19 @@ function formatCatLabel(tsKey: string): string {
     ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 }
 
+// ─── Sensor-group detection ──────────────────────────────────────────────────
+
+// Strip the sensor ordinal (e.g. _1_, _2_) so Tair_1_Avg and Tair_2_Avg
+// both reduce to "Tair_Avg" and are recognized as the same measurement type.
+function sensorBase(varId: string): string {
+  return varId.replace(/_\d+_/, '_');
+}
+
+function isSameSensorGroup(id0: string | null, id1: string | null | undefined): boolean {
+  if (!id0 || !id1) return false;
+  return sensorBase(id0) === sensorBase(id1);
+}
+
 // ─── Stats ───────────────────────────────────────────────────────────────────
 
 type SeriesStats =
@@ -207,6 +220,10 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
   const isRainfall0 = varId  ? /^RF/.test(varId)  : false;
   const isRainfall1 = varId2 ? /^RF/.test(varId2) : false;
   const isCategorical = BUCKET_RANGES.has(range) && (isRainfall0 || isRainfall1);
+  // When both variables are the same measurement on different sensors (e.g.
+  // Tair_1_Avg vs Tair_2_Avg), lock both Y-axes to the same domain so the
+  // scales are directly comparable. Both axes stay visible with their colors.
+  const sameSensorGroup = isSameSensorGroup(varId, varId2);
 
   const rawUnits0 = data0?.[0]?.units ?? '';
   const rawUnits1 = data1?.[0]?.units ?? '';
@@ -265,6 +282,18 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
 
   const stats0 = useMemo(() => values0.length > 0 ? computeStats(values0, isRainfall0) : null, [values0, isRainfall0]);
   const stats1 = useMemo(() => varId2 && values1.length > 0 ? computeStats(values1, isRainfall1) : null, [values1, isRainfall1, varId2]);
+
+  // Shared Y-axis domain: only computed when both series are the same sensor
+  // type. Covers all values from both series with a small padding so lines
+  // don't clip the top/bottom edge.
+  const sharedDomain = useMemo((): [number, number] | undefined => {
+    if (!sameSensorGroup || values0.length === 0 || values1.length === 0) return undefined;
+    const all = [...values0, ...values1];
+    const lo = Math.min(...all);
+    const hi = Math.max(...all);
+    const pad = Math.abs(hi - lo) * 0.05 || 0.5;
+    return [lo - pad, hi + pad];
+  }, [sameSensorGroup, values0, values1]);
 
   const isLoading = (!!varId && loading0) || (!!varId2 && loading1);
   const isError   = (!!varId && error0)   || (!!varId2 && error1);
@@ -346,6 +375,7 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
               <YAxis
                 yAxisId="0"
                 width={36}
+                domain={sharedDomain ?? ['auto', 'auto']}
                 tick={{ fontSize: 10, fill: varId2 ? '#38bdf8' : 'var(--chart-tick, #64748b)' }}
                 axisLine={varId2 ? { stroke: '#38bdf8' } : { stroke: 'var(--chart-grid, #e2e8f0)' }}
                 tickLine={varId2 ? { stroke: '#38bdf8' } : undefined}
@@ -356,6 +386,7 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
                   yAxisId="1"
                   orientation="right"
                   width={36}
+                  domain={sharedDomain ?? ['auto', 'auto']}
                   tick={{ fontSize: 10, fill: '#f59e0b' }}
                   axisLine={{ stroke: '#f59e0b' }}
                   tickLine={{ stroke: '#f59e0b' }}
