@@ -77,7 +77,7 @@ export default function PWAInstallPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm bg-slate-900/40">
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center px-4 backdrop-blur-sm bg-slate-900/40">
       <div className="w-full max-w-sm bg-white dark:bg-zinc-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-700 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">

@@ -33,7 +33,7 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'station
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm bg-slate-900/40">
+      <div className="fixed inset-0 z-[2000] flex items-center justify-center px-4 backdrop-blur-sm bg-slate-900/40">
         {/* Backdrop tap to close */}
         <div className="absolute inset-0" onClick={onClose} />
 
