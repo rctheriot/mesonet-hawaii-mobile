@@ -4,16 +4,20 @@ interface Settings {
   darkMode: boolean;
   view: 'map' | 'list';
   lastStationId: string | null;
-  // Panel height stored as a ratio so it scales correctly on different screen sizes
   panelHeightRatio: number;
-  // Variable standard_name shown on Home station cards; null = auto-select first air temp
   homeVarId: string | null;
-  // Unit system for display — API always returns metric
   units: 'metric' | 'imperial';
-  // Last selected map coloring mode on the Explore screen
   mapMode: string;
-  // Map or list view on the Home screen
   homeView: 'list' | 'map';
+  // Map camera state — persisted so returning from a station detail page
+  // restores the exact position and zoom the user was at.
+  mapLat: number;
+  mapLng: number;
+  mapZoom: number;
+  // List/sort preferences — persisted so filter and sort survive navigation.
+  favSort: 'alpha' | 'value' | 'distance';
+  listSortBy: 'default' | 'nearme';
+  listIslandFilter: string;
 }
 
 const KEY = 'mesonet-settings';
@@ -27,6 +31,12 @@ const DEFAULTS: Settings = {
   units: 'imperial',
   mapMode: 'RF_1_Tot300s',
   homeView: 'list',
+  mapLat: 20.5,
+  mapLng: -157.5,
+  mapZoom: 7,
+  favSort: 'alpha',
+  listSortBy: 'default',
+  listIslandFilter: 'all',
 };
 
 function load(): Settings {

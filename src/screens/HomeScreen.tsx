@@ -31,7 +31,7 @@ const KNOWN_MAP_MODES = new Set<string>(HOME_VAR_OPTIONS.map(o => o.id));
 export default function HomeScreen() {
   const navigate = useNavigate();
   const { settings, updateSettings, favorites, openInstallPrompt } = useAppContext();
-  const { homeVarId, homeView, darkMode } = settings;
+  const { homeVarId, homeView, darkMode, mapLat, mapLng, mapZoom, favSort } = settings;
 
   const { data: stations = [] } = useStations();
   const { data: monitorData = {} } = useStationMonitor();
@@ -45,7 +45,6 @@ export default function HomeScreen() {
       .filter((s): s is Station => s != null);
   }, [favorites, stations]);
 
-  const [favSort, setFavSort] = useState<'alpha' | 'value' | 'distance'>('alpha');
 
   // Per-station latest measurements for map colors — reuses the same React Query cache
   // as StationCard's useLatestMeasurements, so no extra network requests when list was shown first.
@@ -200,10 +199,6 @@ export default function HomeScreen() {
   // If permission was already granted the browser returns silently; otherwise it prompts.
   useEffect(() => { requestLocation(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (coords) setFlyTo({ lat: coords.latitude, lng: coords.longitude, zoom: 11 });
-  }, [coords]);
-
   function handleCenterOnUser() {
     if (coords) {
       setFlyTo({ lat: coords.latitude, lng: coords.longitude, zoom: 12 });
@@ -319,12 +314,14 @@ export default function HomeScreen() {
                 selectedStationId={null}
                 onSelectStation={(id) => navigate('/station/' + id)}
                 flyToCoords={flyTo}
-
                 userLocation={coords}
                 darkMode={darkMode}
                 onCenterOnUser={handleCenterOnUser}
                 geoLoading={geoLoading}
                 isVisible={homeView === 'map'}
+                initialCenter={[mapLat, mapLng]}
+                initialZoom={mapZoom}
+                onCameraChange={(lat, lng, zoom) => updateSettings({ mapLat: lat, mapLng: lng, mapZoom: zoom })}
                 varColors={varColors}
                 varLabels={varLabels}
                 varArrows={varArrows}
@@ -343,9 +340,9 @@ export default function HomeScreen() {
                     <select
                       value={favSort}
                       onChange={e => {
-                        const val = e.target.value as typeof favSort;
+                        const val = e.target.value as 'alpha' | 'value' | 'distance';
                         if (val === 'distance' && !coords) requestLocation();
-                        setFavSort(val);
+                        updateSettings({ favSort: val });
                       }}
                       className="text-xs bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-sky-500"
                     >

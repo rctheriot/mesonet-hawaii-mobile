@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StationMap from '../components/Map/StationMap';
 import MapLegend, { type MapMode } from '../components/Map/MapLegend';
@@ -29,7 +29,7 @@ const MAP_MODE_OPTIONS: { mode: MapMode; label: string }[] = [
 export default function ExploreScreen() {
   const navigate = useNavigate();
   const { settings, updateSettings, favorites, openInstallPrompt } = useAppContext();
-  const { darkMode, view } = settings;
+  const { darkMode, view, mapLat, mapLng, mapZoom, listSortBy, listIslandFilter } = settings;
   const mapMode = settings.mapMode as MapMode;
   const setMapMode = (mode: MapMode) => updateSettings({ mapMode: mode });
 
@@ -88,20 +88,11 @@ export default function ExploreScreen() {
 
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | undefined>();
 
-  // When location is obtained, fly the map to the user
-  useEffect(() => {
-    if (coords) {
-      setFlyTo({ lat: coords.latitude, lng: coords.longitude, zoom: 11 });
-    }
-  }, [coords]);
-
-  // Center map on user — lazily request location if not yet obtained
   function handleCenterOnUser() {
     if (coords) {
       setFlyTo({ lat: coords.latitude, lng: coords.longitude, zoom: 12 });
     } else {
       requestLocation();
-      // The useEffect watching coords will trigger flyTo once location is obtained
     }
   }
 
@@ -198,12 +189,14 @@ export default function ExploreScreen() {
             selectedStationId={null}
             onSelectStation={(id) => navigate('/station/' + id)}
             flyToCoords={flyTo}
-
             userLocation={coords}
             darkMode={darkMode}
             onCenterOnUser={handleCenterOnUser}
             geoLoading={geoLoading}
             isVisible={view === 'map'}
+            initialCenter={[mapLat, mapLng]}
+            initialZoom={mapZoom}
+            onCameraChange={(lat, lng, zoom) => updateSettings({ mapLat: lat, mapLng: lng, mapZoom: zoom })}
             varColors={varColors}
             varLabels={varLabels}
             varArrows={varArrows}
@@ -225,6 +218,10 @@ export default function ExploreScreen() {
               mapMode={mapMode}
               varLabels={varLabels}
               units={settings.units}
+              sortBy={listSortBy}
+              onSortByChange={(v) => updateSettings({ listSortBy: v })}
+              islandFilter={listIslandFilter}
+              onIslandFilterChange={(v) => updateSettings({ listIslandFilter: v })}
             />
 
           </div>

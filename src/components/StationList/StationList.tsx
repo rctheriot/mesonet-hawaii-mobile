@@ -26,10 +26,14 @@ interface StationListProps {
   requestLocation: () => void;
   geoLoading: boolean;
   geoError: string | null;
-  // Variable coloring mode — when set and not 'status', show value instead of status label
   mapMode?: string;
   varLabels?: Map<string, string>;
   units?: UnitSystem;
+  // Controlled sort/filter — when provided, persists across navigation.
+  sortBy?: SortBy;
+  onSortByChange?: (v: SortBy) => void;
+  islandFilter?: string;
+  onIslandFilterChange?: (v: string) => void;
 }
 
 type FilterStatus = 'all' | StatusKey;
@@ -42,11 +46,17 @@ const STATUS_OPTIONS: { label: string; value: FilterStatus }[] = [
   { label: 'Planned',  value: 'planned' },
 ];
 
-export default function StationList({ stations, monitorData, onSelectStation, favorites, coords, requestLocation, geoLoading, geoError, mapMode, varLabels, units = 'metric' }: StationListProps) {
+export default function StationList({ stations, monitorData, onSelectStation, favorites, coords, requestLocation, geoLoading, geoError, mapMode, varLabels, units = 'metric', sortBy: sortByProp, onSortByChange, islandFilter: islandFilterProp, onIslandFilterChange }: StationListProps) {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
-  const [islandFilter, setIslandFilter] = useState<string>('all');
+  const [islandFilterLocal, setIslandFilterLocal] = useState<string>('all');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [sortBy, setSortBy] = useState<SortBy>('default');
+  const [sortByLocal, setSortByLocal] = useState<SortBy>('default');
+
+  // Use controlled values when provided, otherwise fall back to local state.
+  const sortBy = sortByProp ?? sortByLocal;
+  const islandFilter = islandFilterProp ?? islandFilterLocal;
+  function setSortBy(v: SortBy) { onSortByChange ? onSortByChange(v) : setSortByLocal(v); }
+  function setIslandFilter(v: string) { onIslandFilterChange ? onIslandFilterChange(v) : setIslandFilterLocal(v); }
 
   // Derive sorted unique island list from stations
   const islands = useMemo(() => {

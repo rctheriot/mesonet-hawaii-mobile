@@ -10,11 +10,16 @@ import { stationStatusKey, STATUS_BADGE, STATUS_LABEL } from '../theme';
 import HistoryChart from '../components/StationPanel/HistoryChart';
 import StationMeta from '../components/StationPanel/StationMeta';
 import ReadingsGrid from '../components/StationPanel/ReadingsGrid';
+import HelpModal from '../components/Help/HelpModal';
+import SettingsModal from '../components/Settings/SettingsModal';
 
 export default function StationDetail() {
   const { stationId } = useParams<{ stationId: string }>();
   const navigate = useNavigate();
-  const { favorites, toggleFavorite, settings } = useAppContext();
+  const { favorites, toggleFavorite, settings, openInstallPrompt } = useAppContext();
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [helpOpen, setHelpOpen]         = useState(false);
 
   const { data: stations = [], isLoading: stationsLoading } = useStations();
   const { data: monitorData = {} } = useStationMonitor();
@@ -86,28 +91,39 @@ export default function StationDetail() {
   }
 
   return (
+    <>
     <div className="w-full h-full flex flex-col bg-white dark:bg-zinc-950 overflow-hidden">
       {/* Top bar */}
       <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-zinc-900/95 backdrop-blur border-b border-slate-200 dark:border-zinc-800">
         <button
           onClick={() => navigate(-1 as any)}
-          className="px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold transition-colors"
+          className="flex items-center gap-1 px-3 py-2 rounded-lg text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors text-sm font-medium"
           aria-label="Back"
         >
-          ← Back
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Back
         </button>
-        {/* Save / Unsave station */}
-        <button
-          onClick={() => stationId && toggleFavorite(stationId)}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
-            isFavorite
-              ? 'bg-red-50 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50'
-              : 'bg-green-50 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50'
-          }`}
-          aria-label={isFavorite ? 'Unsave Station' : 'Save Station'}
-        >
-          {isFavorite ? 'Unsave' : 'Save'}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors"
+            aria-label="Settings"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+          <button
+            onClick={() => setHelpOpen(true)}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors"
+            aria-label="Help"
+          >
+            ?
+          </button>
+        </div>
       </div>
 
       {/* Scrollable content */}
@@ -116,9 +132,23 @@ export default function StationDetail() {
         {/* ── Hero section ──────────────────────────────────────────────────── */}
         <div className="px-5 pt-6 pb-5 border-b border-slate-100 dark:border-zinc-800">
           <div className="flex items-start justify-between gap-3 mb-1">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-zinc-100 leading-tight">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-zinc-100 leading-tight flex-1">
               {station.full_name ?? station.name ?? station.station_id}
             </h1>
+            <button
+              onClick={() => stationId && toggleFavorite(stationId)}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold border transition-colors mt-1 ${
+                isFavorite
+                  ? 'bg-sky-500 border-sky-500 text-white hover:bg-sky-600 hover:border-sky-600'
+                  : 'bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-600 text-slate-600 dark:text-zinc-300 hover:border-sky-400 hover:text-sky-600 dark:hover:border-sky-500 dark:hover:text-sky-400'
+              }`}
+              aria-label={isFavorite ? 'Remove from My Stations' : 'Add to My Stations'}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={isFavorite ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+              {isFavorite ? 'Saved' : 'Save'}
+            </button>
           </div>
 
           {/* Island + status badge */}
@@ -224,5 +254,9 @@ export default function StationDetail() {
         )}
       </div>
     </div>
+
+    {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+    {helpOpen && <HelpModal initialTab="stations" onClose={() => setHelpOpen(false)} onInstallApp={() => { setHelpOpen(false); openInstallPrompt(); }} />}
+    </>
   );
 }

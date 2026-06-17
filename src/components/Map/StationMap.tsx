@@ -70,6 +70,11 @@ interface StationMapProps {
   // Current panel height in px — triggers a debounced invalidateSize so tiles
   // fill correctly after the panel is dragged or first opened.
   panelHeight?: number;
+  // Restored camera state — used on init so returning from a detail page
+  // puts the map back at the same position and zoom.
+  initialCenter?: [number, number];
+  initialZoom?: number;
+  onCameraChange?: (lat: number, lng: number, zoom: number) => void;
   // Hex colors per station_id — when provided, overrides status colors.
   varColors?: Map<string, string>;
   // Display labels per station_id — when provided, shown as a pill on the marker.
@@ -92,6 +97,9 @@ export default function StationMap({
   geoLoading = false,
   isVisible = true,
   panelHeight,
+  initialCenter,
+  initialZoom,
+  onCameraChange,
   varColors,
   varLabels,
   varArrows,
@@ -112,12 +120,19 @@ export default function StationMap({
     if (!containerRef.current || mapRef.current) return;
 
     const map = L.map(containerRef.current, {
-      center: [20.5, -157.5],
-      zoom: 7,
+      center: initialCenter ?? [20.5, -157.5],
+      zoom: initialZoom ?? 7,
       zoomControl: false,
       maxBounds: L.latLngBounds([17, -163], [24, -152]),
-      maxBoundsViscosity: 1.0, // hard stop — map can't be dragged outside Hawaii
+      maxBoundsViscosity: 1.0,
     });
+
+    if (onCameraChange) {
+      map.on('moveend', () => {
+        const c = map.getCenter();
+        onCameraChange(c.lat, c.lng, map.getZoom());
+      });
+    }
 
     const tile = L.tileLayer(TILE_URL.light, {
       attribution: ATTRIBUTION,
