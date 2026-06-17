@@ -19,7 +19,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'location', label: 'Location'         },
 ];
 
-// Pre-build glossary entries grouped by category, in GROUP_ORDER, for the Glossary tab.
+// Computed at module level so it runs once, not on every render.
 const GLOSSARY_GROUPS = GROUP_ORDER.map(group => ({
   group,
   entries: Object.entries(VARIABLE_GLOSSARY).filter(
@@ -204,7 +204,6 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'station
         </div>
       </div>
 
-      {/* Variable info modal — rendered on top when a glossary entry is tapped */}
       {infoVarId && (
         <VariableInfoModal varId={infoVarId} onClose={() => setInfoVarId(null)} />
       )}

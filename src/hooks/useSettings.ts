@@ -9,12 +9,10 @@ interface Settings {
   units: 'metric' | 'imperial';
   mapMode: string;
   homeView: 'list' | 'map';
-  // Map camera state — persisted so returning from a station detail page
-  // restores the exact position and zoom the user was at.
+  // Persisted so returning from a station detail page restores the map position.
   mapLat: number;
   mapLng: number;
   mapZoom: number;
-  // List/sort preferences — persisted so filter and sort survive navigation.
   favSort: 'alpha' | 'value' | 'distance';
   listSortBy: 'default' | 'nearme';
   listIslandFilter: string;

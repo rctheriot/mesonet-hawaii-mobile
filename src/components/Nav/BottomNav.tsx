@@ -5,7 +5,6 @@ const TABS = [
     path: '/',
     label: 'My Stations',
     icon: (active: boolean) => (
-      // Bookmark icon — filled when active
       <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 1.8} strokeLinecap="round" strokeLinejoin="round">
         <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
       </svg>
@@ -15,7 +14,6 @@ const TABS = [
     path: '/explore',
     label: 'Station Network',
     icon: (active: boolean) => (
-      // Globe / map pin icon — uses a radio-tower style
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="10" r="3" />
         <path d="M12 2a8 8 0 0 1 8 8c0 5-8 14-8 14S4 15 4 10a8 8 0 0 1 8-8z" />

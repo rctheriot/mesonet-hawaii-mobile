@@ -52,13 +52,11 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sortByLocal, setSortByLocal] = useState<SortBy>('default');
 
-  // Use controlled values when provided, otherwise fall back to local state.
   const sortBy = sortByProp ?? sortByLocal;
   const islandFilter = islandFilterProp ?? islandFilterLocal;
   function setSortBy(v: SortBy) { onSortByChange ? onSortByChange(v) : setSortByLocal(v); }
   function setIslandFilter(v: string) { onIslandFilterChange ? onIslandFilterChange(v) : setIslandFilterLocal(v); }
 
-  // Derive sorted unique island list from stations
   const islands = useMemo(() => {
     const names = new Set<string>();
     stations.forEach(s => { if (s.island) names.add(s.island); });
@@ -76,7 +74,6 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
 
   const sorted = useMemo(() => {
     if (sortBy === 'nearme' && coords) {
-      // Sort by distance from user; stations without coords go to the end
       return [...filtered].sort((a, b) => {
         if (!a.lat || !a.lng) return 1;
         if (!b.lat || !b.lng) return -1;
@@ -84,7 +81,6 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
              - haversineKm(coords.latitude, coords.longitude, b.lat, b.lng);
       });
     }
-    // Default: sort by status then name
     return [...filtered].sort((a, b) => {
       const order: Record<string, number> = { active: 0, inactive: 1, planned: 2, unknown: 3 };
       const aOrd = order[stationStatusKey(a, monitorData)] ?? 3;

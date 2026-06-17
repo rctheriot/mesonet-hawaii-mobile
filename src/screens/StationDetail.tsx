@@ -81,7 +81,7 @@ export default function StationDetail() {
       <div className="flex flex-col items-center justify-center w-full h-full bg-white dark:bg-zinc-950 gap-4">
         <p className="text-slate-500 dark:text-zinc-400 text-base">Station not found.</p>
         <button
-          onClick={() => navigate(-1 as any)}
+          onClick={() => navigate(-1)}
           className="px-4 py-2 rounded-xl bg-sky-500 text-white text-base font-medium"
         >
           ← Back
@@ -96,7 +96,7 @@ export default function StationDetail() {
       {/* Top bar */}
       <div className="flex-shrink-0 flex items-center justify-between pl-5 pr-4 py-3 bg-white/95 dark:bg-zinc-900/95 backdrop-blur border-b border-slate-200 dark:border-zinc-800">
         <button
-          onClick={() => navigate(-1 as any)}
+          onClick={() => navigate(-1)}
           className="flex items-center gap-1 pl-0 pr-3 py-2 rounded-lg text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors text-sm font-medium"
           aria-label="Back"
         >
@@ -163,14 +163,12 @@ export default function StationDetail() {
               </span>
             )}
           </div>
-          {/* Last reading timestamp — shown below status badges so users know how fresh the data is */}
           {newestTimestamp && (
             <p className="text-sm text-slate-500 dark:text-zinc-400 mb-4">
               Updated {relativeTime(newestTimestamp)}
             </p>
           )}
 
-          {/* Big primary reading */}
           {readingsLoading ? (
             <p className="text-slate-400 text-base">Loading readings…</p>
           ) : heroReading ? (

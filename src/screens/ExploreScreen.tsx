@@ -40,13 +40,11 @@ export default function ExploreScreen() {
 
   const { data: stations = [], isLoading, isError } = useStations();
   const { data: monitorData = {} } = useStationMonitor();
-  // Rainfall uses its own 24hr-sum hook; all other variable modes use the latest-value hook.
   const { data: varData }      = useMapMeasurements(mapMode !== 'status' && mapMode !== 'RF_1_Tot300s' ? mapMode : null);
   const { data: rainfallData } = useMapRainfall24hr(mapMode === 'RF_1_Tot300s');
   const { data: windDirData }  = useMapMeasurements(mapMode === 'WS_1_Avg' ? 'WDrs_1_Avg' : null);
   const { coords, loading: geoLoading, error: geoError, requestLocation } = useGeolocation();
 
-  // For rainfall mode use the 24hr-sum data; otherwise use the latest-value data.
   const activeVarData = mapMode === 'RF_1_Tot300s' ? rainfallData : varData;
 
   const varColors = useMemo(() => {
@@ -179,7 +177,7 @@ export default function ExploreScreen() {
           </div>
         )}
 
-        {/* Map stays mounted even in list view to preserve camera state */}
+        {/* Map always mounted; hidden in list view so Leaflet preserves camera state */}
         <div
           className={view === 'map' ? 'absolute inset-0' : 'hidden'}
         >
@@ -223,7 +221,6 @@ export default function ExploreScreen() {
               islandFilter={listIslandFilter}
               onIslandFilterChange={(v) => updateSettings({ listIslandFilter: v })}
             />
-
           </div>
         )}
       </div>

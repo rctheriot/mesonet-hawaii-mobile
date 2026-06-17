@@ -36,7 +36,6 @@ export default function HomeScreen() {
   const { data: stations = [] } = useStations();
   const { data: monitorData = {} } = useStationMonitor();
   const { coords, loading: geoLoading, requestLocation } = useGeolocation();
-  // Bulk rainfall fetch for the list-view station cards
   const { data: rainfallMap } = useMapRainfall24hr(homeVarId === 'RF_1_Tot300s');
 
   const myStations = useMemo(() => {
@@ -46,9 +45,8 @@ export default function HomeScreen() {
   }, [favorites, stations]);
 
 
-  // Per-station latest measurements for map colors — reuses the same React Query cache
-  // as StationCard's useLatestMeasurements, so no extra network requests when list was shown first.
-  // This avoids the bulk API's incomplete station index (some stations are missing from bulk fetches).
+  // Per-station queries share the same React Query cache keys as StationCard, so no
+  // extra network requests are made when the list was shown first.
   const latestQueries = useQueries({
     queries: homeVarId && homeVarId !== 'RF_1_Tot300s'
       ? myStations.map(s => ({
@@ -60,7 +58,6 @@ export default function HomeScreen() {
       : [],
   });
 
-  // Per-station 24hr rainfall for map colors — reuses same cache as StationCard's useRainfall24hr.
   const rainfallQueries = useQueries({
     queries: homeVarId === 'RF_1_Tot300s'
       ? myStations.map(s => ({
@@ -140,9 +137,6 @@ export default function HomeScreen() {
     return map;
   }, [latestQueries, rainfallQueries, homeVarId, myStations, settings.units]);
 
-  // Precompute distances from user to each favorite station (km).
-  // Passed to StationCard for display and used for distance sort.
-  // Empty map when location hasn't been granted yet.
   const distanceMap = useMemo(() => {
     if (!coords) return new Map<string, number>();
     return new Map(myStations.map(s => [
@@ -151,9 +145,6 @@ export default function HomeScreen() {
     ]));
   }, [myStations, coords]);
 
-  // Precompute the raw (metric) value of the selected variable for each station.
-  // Used to sort by value (highest first). Reuses the same query cache as varColors
-  // so no extra network requests are made.
   const valueMap = useMemo(() => {
     const map = new Map<string, number>();
     if (homeVarId === 'RF_1_Tot300s') {
@@ -171,9 +162,7 @@ export default function HomeScreen() {
     return map;
   }, [latestQueries, rainfallQueries, homeVarId, myStations]);
 
-  // Sort favorites list by the selected sort mode.
-  // Distance sort falls back to insertion order if location isn't available yet
-  // (requestLocation() is triggered when the user selects Distance in the dropdown).
+  // Distance sort falls back to insertion order when location hasn't been granted yet.
   const sortedStations = useMemo(() => {
     if (favSort === 'alpha') {
       return [...myStations].sort((a, b) =>
@@ -195,9 +184,10 @@ export default function HomeScreen() {
 
   const [flyTo, setFlyTo]   = useState<{ lat: number; lng: number; zoom?: number } | undefined>();
 
-  // Request location on mount so distance shows on station cards automatically.
-  // If permission was already granted the browser returns silently; otherwise it prompts.
-  useEffect(() => { requestLocation(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Request location on mount so distance shows on cards automatically.
+  // Empty deps is intentional — we only want this to fire once.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { requestLocation(); }, []);
 
   function handleCenterOnUser() {
     if (coords) {
@@ -304,7 +294,7 @@ export default function HomeScreen() {
           </div>
         ) : (
           <>
-            {/* Map — always mounted, hidden in list view to preserve camera state */}
+            {/* Map always mounted; hidden in list view so Leaflet preserves camera state */}
             <div
               className={homeView === 'map' ? 'absolute inset-0' : 'hidden'}
             >

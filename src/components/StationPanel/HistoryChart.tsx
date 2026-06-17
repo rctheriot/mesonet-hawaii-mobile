@@ -28,10 +28,8 @@ const RANGE_MS: Record<TimeRange, number> = {
   '7d':  7  * 24 * 60 * 60 * 1000,
 };
 
-// When rainfall is one of the selected variables on 3d or 7d, switch to a
-// categorical XAxis with 1-hour buckets. Recharts then auto-fills bar width
-// per slot — no pixel math needed. Non-rainfall series are averaged per hour.
-// Without rainfall, 3d/7d use the continuous axis at full 5-min resolution.
+// Rainfall on 3d/7d uses a categorical XAxis with 1-hour buckets so Recharts
+// can auto-size bars without pixel math. Non-rainfall series are averaged per hour.
 const BUCKET_RANGES = new Set<TimeRange>(['3d', '7d']);
 const BUCKET_MS = 60 * 60 * 1000; // 1 hour
 
@@ -213,9 +211,10 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
   const { data: data0, isLoading: loading0, isError: error0 } = useHistoricalMeasurements(stationId, varId, range);
   const { data: data1, isLoading: loading1, isError: error1 } = useHistoricalMeasurements(stationId, varId2 ?? null, range);
 
-  // Snapshot 'now' once per range change so the domain and ticks stay stable
-  // within a render cycle. Intentionally not updated on every render.
-  const now = useMemo(() => Date.now(), [range]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Snapshot 'now' once per range change so the domain and ticks don't drift
+  // during a render cycle. The Date.now() call is intentionally the only dep.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const now = useMemo(() => Date.now(), [range]);
 
   const isRainfall0 = varId  ? /^RF/.test(varId)  : false;
   const isRainfall1 = varId2 ? /^RF/.test(varId2) : false;

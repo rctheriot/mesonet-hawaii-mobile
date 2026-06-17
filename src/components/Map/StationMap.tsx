@@ -29,8 +29,6 @@ export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: numb
 }
 
 // ─── Marker icon helper ───────────────────────────────────────────────────────
-// When variable data is present, stations with a value get a colored pill; stations
-// without a value get a small gray dot (no status color leaking through).
 function applyVarIcon(
   marker: L.Marker,
   id: string,
@@ -94,11 +92,8 @@ interface StationMapProps {
   initialCenter?: [number, number];
   initialZoom?: number;
   onCameraChange?: (lat: number, lng: number, zoom: number) => void;
-  // Hex colors per station_id — when provided, overrides status colors.
   varColors?: Map<string, string>;
-  // Display labels per station_id — when provided, shown as a pill on the marker.
   varLabels?: Map<string, string>;
-  // Wind direction degrees per station_id — when provided, shows a directional arrow.
   varArrows?: Map<string, number>;
 }
 
@@ -214,16 +209,12 @@ export default function StationMap({
       metaRef.current[station_id] = { color, hollow };
 
       if (markersRef.current[station_id]) {
-        // Existing marker — apply current variable coloring (or status if no variable mode).
         if (station_id !== selectedStationId) {
           applyVarIcon(markersRef.current[station_id], station_id, { color, hollow }, varColors, varLabels, varArrows);
         }
         return;
       }
 
-      // New marker — always starts with status color; variable coloring applied
-      // in the same effect pass once varColors is populated.
-      // Apply a small deterministic offset to obscure the precise location.
       const { dlat, dlng } = stationJitter(station_id);
       const marker = L.marker([lat + dlat, lng + dlng], {
         icon: stationDivIcon(color, hollow),
@@ -291,7 +282,6 @@ export default function StationMap({
     <div className="relative w-full h-full z-0">
       <div ref={containerRef} className="w-full h-full" />
 
-      {/* Unified map controls — zoom + center-on-user as a single styled group */}
       <div className="absolute top-2.5 right-2.5 z-[1001] flex flex-row rounded-xl overflow-hidden shadow border border-slate-200 dark:border-zinc-600">
         <button
           onClick={() => mapRef.current?.zoomIn()}
