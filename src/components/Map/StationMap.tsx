@@ -115,6 +115,8 @@ export default function StationMap({
       center: [20.5, -157.5],
       zoom: 7,
       zoomControl: false,
+      maxBounds: L.latLngBounds([17, -163], [24, -152]),
+      maxBoundsViscosity: 1.0, // hard stop — map can't be dragged outside Hawaii
     });
 
     const tile = L.tileLayer(TILE_URL.light, {

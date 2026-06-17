@@ -6,6 +6,14 @@ interface GeolocationState {
   loading: boolean;
 }
 
+// Generous bounding box covering all Hawaiian islands plus a buffer.
+const HAWAII_BOUNDS = { minLat: 17, maxLat: 24, minLng: -163, maxLng: -152 };
+
+function isInHawaii(lat: number, lng: number): boolean {
+  return lat >= HAWAII_BOUNDS.minLat && lat <= HAWAII_BOUNDS.maxLat &&
+         lng >= HAWAII_BOUNDS.minLng && lng <= HAWAII_BOUNDS.maxLng;
+}
+
 export function useGeolocation() {
   const [state, setState] = useState<GeolocationState>({
     coords: null,
@@ -23,14 +31,16 @@ export function useGeolocation() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setState({
-          coords: {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          },
-          error: null,
-          loading: false,
-        });
+        const { latitude, longitude } = position.coords;
+        if (!isInHawaii(latitude, longitude)) {
+          setState({
+            coords: null,
+            error: 'Your location appears to be outside Hawaiʻi. Near Me only works on the islands.',
+            loading: false,
+          });
+          return;
+        }
+        setState({ coords: { latitude, longitude }, error: null, loading: false });
       },
       (err) => {
         setState({ coords: null, error: err.message, loading: false });
