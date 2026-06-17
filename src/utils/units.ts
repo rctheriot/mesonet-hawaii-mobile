@@ -127,7 +127,7 @@ export function convertValue(
 
 // Returns a user-facing label for a variable, overriding API names for special cases.
 export function getVariableLabel(varId: string, apiDisplayName?: string): string {
-  if (varId === 'RF_1_Tot300s') return '24hr Rainfall';
+  if (varId === 'RF_1_Tot300s') return 'Rainfall';
   if (/^WS_/.test(varId)) return 'Wind';
   return apiDisplayName ?? varId;
 }
