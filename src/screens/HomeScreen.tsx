@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
 import { useAppContext } from '../context/AppContext';
@@ -6,7 +6,6 @@ import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
 import StationCard from '../components/StationCard';
 import StationMap, { haversineKm } from '../components/Map/StationMap';
-import StationPanel from '../components/StationPanel/StationPanel';
 import MapLegend, { type MapMode } from '../components/Map/MapLegend';
 import VariableInfoModal from '../components/Glossary/VariableInfoModal';
 import { convertValue } from '../utils/units';
@@ -31,8 +30,8 @@ const KNOWN_MAP_MODES = new Set<string>(HOME_VAR_OPTIONS.map(o => o.id));
 
 export default function HomeScreen() {
   const navigate = useNavigate();
-  const { settings, updateSettings, favorites, toggleFavorite, openInstallPrompt } = useAppContext();
-  const { homeVarId, homeView, darkMode, panelHeightRatio } = settings;
+  const { settings, updateSettings, favorites, openInstallPrompt } = useAppContext();
+  const { homeVarId, homeView, darkMode } = settings;
 
   const { data: stations = [] } = useStations();
   const { data: monitorData = {} } = useStationMonitor();
@@ -195,9 +194,7 @@ export default function HomeScreen() {
     return myStations;
   }, [myStations, favSort, coords, distanceMap, valueMap]);
 
-  const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
   const [flyTo, setFlyTo]   = useState<{ lat: number; lng: number; zoom?: number } | undefined>();
-  const [panTo, setPanTo]   = useState<{ lat: number; lng: number } | undefined>();
 
   // Request location on mount so distance shows on station cards automatically.
   // If permission was already granted the browser returns silently; otherwise it prompts.
@@ -214,45 +211,17 @@ export default function HomeScreen() {
       requestLocation();
     }
   }
-  const [panelHeight, setPanelHeight] = useState(() => Math.round(window.innerHeight * panelHeightRatio));
   const [helpOpen, setHelpOpen]         = useState(false);
   const [helpInitialTab, setHelpInitialTab] = useState<'stations' | 'explore' | 'glossary' | 'install' | 'location'>('stations');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoVarId, setInfoVarId]       = useState<string | null>(null);
 
-  const selectedStation: Station | null = myStations.find(s => s.station_id === selectedStationId) ?? null;
-
-  const handleHeightChange = useCallback((h: number) => {
-    setPanelHeight(h);
-    if (h > 0) updateSettings({ panelHeightRatio: h / window.innerHeight });
-  }, [updateSettings]);
-
-  function handleSelectStation(id: string) {
-    setSelectedStationId(id);
-    const station = myStations.find(s => s.station_id === id);
-    if (station) setPanTo({ lat: station.lat, lng: station.lng });
-  }
-
-  // Re-pan when switching back to map view with a selected station
-  useEffect(() => {
-    if (homeView === 'map' && selectedStation) {
-      setPanTo({ lat: selectedStation.lat, lng: selectedStation.lng });
-    }
-  }, [homeView]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const isEmpty = myStations.length === 0;
 
   return (
-    <div className="relative w-full h-full bg-white dark:bg-zinc-950 flex flex-col">
+    <div className="relative w-full h-full bg-white dark:bg-zinc-950 flex flex-col pb-14">
       {/* Top bar */}
       <div className="flex-shrink-0 relative flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-zinc-900/95 backdrop-blur border-b border-slate-200 dark:border-zinc-800 z-20">
-        <button
-          onClick={() => navigate('/explore')}
-          className="px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold transition-colors"
-        >
-          Explore
-        </button>
-
         {/* Map/List toggle — absolutely centered, only shown when favorites exist */}
         {!isEmpty && (
           <div className="absolute left-1/2 -translate-x-1/2 flex bg-slate-100 dark:bg-zinc-800 rounded-lg p-0.5 gap-0.5">
@@ -343,21 +312,19 @@ export default function HomeScreen() {
             {/* Map — always mounted, hidden in list view to preserve camera state */}
             <div
               className={homeView === 'map' ? 'absolute inset-0' : 'hidden'}
-              style={{ bottom: panelHeight }}
             >
               <StationMap
                 stations={myStations}
                 monitorData={monitorData}
-                selectedStationId={selectedStationId}
-                onSelectStation={handleSelectStation}
+                selectedStationId={null}
+                onSelectStation={(id) => navigate('/station/' + id)}
                 flyToCoords={flyTo}
-                panToCoords={panTo}
+
                 userLocation={coords}
                 darkMode={darkMode}
                 onCenterOnUser={handleCenterOnUser}
                 geoLoading={geoLoading}
                 isVisible={homeView === 'map'}
-                panelHeight={panelHeight}
                 varColors={varColors}
                 varLabels={varLabels}
                 varArrows={varArrows}
@@ -402,15 +369,6 @@ export default function HomeScreen() {
               </div>
             )}
 
-            {/* Station panel — shown when a station is tapped on the map */}
-            <StationPanel
-              station={selectedStation}
-              monitorData={monitorData}
-              onClose={() => setSelectedStationId(null)}
-              onHeightChange={handleHeightChange}
-              isFavorite={selectedStation ? favorites.has(selectedStation.station_id) : false}
-              onToggleFavorite={toggleFavorite}
-            />
           </>
         )}
       </div>

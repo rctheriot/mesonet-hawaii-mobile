@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StationMap from '../components/Map/StationMap';
 import MapLegend, { type MapMode } from '../components/Map/MapLegend';
-import StationPanel from '../components/StationPanel/StationPanel';
 import StationList from '../components/StationList/StationList';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
@@ -13,7 +12,6 @@ import { useGeolocation } from '../hooks/useGeolocation';
 import { useAppContext } from '../context/AppContext';
 import { convertValue } from '../utils/units';
 import { tempToHex, windToHex, rhToHex, rainToHex, smToHex, swToHex } from '../utils/mapColor';
-import type { Station } from '../types/api';
 
 type View = 'map' | 'list';
 
@@ -30,8 +28,8 @@ const MAP_MODE_OPTIONS: { mode: MapMode; label: string }[] = [
 
 export default function ExploreScreen() {
   const navigate = useNavigate();
-  const { settings, updateSettings, favorites, toggleFavorite, openInstallPrompt } = useAppContext();
-  const { darkMode, view, lastStationId, panelHeightRatio } = settings;
+  const { settings, updateSettings, favorites, openInstallPrompt } = useAppContext();
+  const { darkMode, view } = settings;
   const mapMode = settings.mapMode as MapMode;
   const setMapMode = (mode: MapMode) => updateSettings({ mapMode: mode });
 
@@ -39,7 +37,6 @@ export default function ExploreScreen() {
   const [helpInitialTab, setHelpInitialTab] = useState<'stations' | 'explore' | 'glossary' | 'install' | 'location'>('stations');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoVarId, setInfoVarId]       = useState<string | null>(null);
-  const [selectedStationId, setSelectedStationId] = useState<string | null>(lastStationId);
 
   const { data: stations = [], isLoading, isError } = useStations();
   const { data: monitorData = {} } = useStationMonitor();
@@ -90,7 +87,6 @@ export default function ExploreScreen() {
   }, [activeVarData, mapMode, settings.units]);
 
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | undefined>();
-  const [panTo, setPanTo] = useState<{ lat: number; lng: number } | undefined>();
 
   // When location is obtained, fly the map to the user
   useEffect(() => {
@@ -98,38 +94,6 @@ export default function ExploreScreen() {
       setFlyTo({ lat: coords.latitude, lng: coords.longitude, zoom: 11 });
     }
   }, [coords]);
-
-  const selectedStation: Station | null =
-    stations.find(s => s.station_id === selectedStationId) ?? null;
-
-  function handleSelectStation(id: string) {
-    setSelectedStationId(id);
-    updateSettings({ lastStationId: id });
-  }
-
-  function handleListSelect(id: string) {
-    const station = stations.find(s => s.station_id === id);
-    setSelectedStationId(id);
-    updateSettings({ lastStationId: id });
-    if (station) setPanTo({ lat: station.lat, lng: station.lng });
-  }
-
-  // When switching back to map view, re-pan to the selected station.
-  useEffect(() => {
-    if (view === 'map' && selectedStation) {
-      setPanTo({ lat: selectedStation.lat, lng: selectedStation.lng });
-    }
-  }, [view]);
-
-  const [panelHeight, setPanelHeight] = useState(() =>
-    Math.round(window.innerHeight * panelHeightRatio)
-  );
-
-  const handleHeightChange = useCallback((h: number) => {
-    setPanelHeight(h);
-    if (h > 0) updateSettings({ panelHeightRatio: h / window.innerHeight });
-  }, [updateSettings]);
-
 
   // Center map on user — lazily request location if not yet obtained
   function handleCenterOnUser() {
@@ -142,19 +106,9 @@ export default function ExploreScreen() {
   }
 
   return (
-    <div className="relative w-full h-full bg-white dark:bg-zinc-950 flex flex-col">
+    <div className="relative w-full h-full bg-white dark:bg-zinc-950 flex flex-col pb-14">
       {/* Top bar */}
       <div className="flex-shrink-0 relative flex items-center justify-between px-4 py-3 bg-white/95 dark:bg-zinc-900/95 backdrop-blur border-b border-slate-200 dark:border-zinc-800 z-20">
-        {/* Left: Home button */}
-        <div className="flex items-center">
-          <button
-            onClick={() => navigate('/')}
-            className="px-4 py-2 rounded-lg bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold transition-colors"
-            aria-label="Go to home"
-          >
-            Home
-          </button>
-        </div>
 
         {/* Center: Map/List toggle — absolutely centered so it doesn't shift with side buttons */}
         <div className="absolute left-1/2 -translate-x-1/2 flex bg-slate-100 dark:bg-zinc-800 rounded-lg p-0.5 gap-0.5">
@@ -237,21 +191,19 @@ export default function ExploreScreen() {
         {/* Map stays mounted even in list view to preserve camera state */}
         <div
           className={view === 'map' ? 'absolute inset-0' : 'hidden'}
-          style={{ bottom: panelHeight }}
         >
           <StationMap
             stations={stations}
             monitorData={monitorData}
-            selectedStationId={selectedStationId}
-            onSelectStation={handleSelectStation}
+            selectedStationId={null}
+            onSelectStation={(id) => navigate('/station/' + id)}
             flyToCoords={flyTo}
-            panToCoords={panTo}
+
             userLocation={coords}
             darkMode={darkMode}
             onCenterOnUser={handleCenterOnUser}
             geoLoading={geoLoading}
             isVisible={view === 'map'}
-            panelHeight={panelHeight}
             varColors={varColors}
             varLabels={varLabels}
             varArrows={varArrows}
@@ -260,11 +212,11 @@ export default function ExploreScreen() {
         </div>
 
         {view === 'list' && (
-          <div className="absolute inset-0" style={{ bottom: panelHeight }}>
+          <div className="absolute inset-0">
             <StationList
               stations={stations}
               monitorData={monitorData}
-              onSelectStation={handleListSelect}
+              onSelectStation={(id) => navigate('/station/' + id)}
               favorites={favorites}
               coords={coords}
               requestLocation={requestLocation}
@@ -277,15 +229,6 @@ export default function ExploreScreen() {
 
           </div>
         )}
-
-        <StationPanel
-          station={selectedStation}
-          monitorData={monitorData}
-          onClose={() => { setSelectedStationId(null); updateSettings({ lastStationId: null }); }}
-          onHeightChange={handleHeightChange}
-          isFavorite={selectedStation ? favorites.has(selectedStation.station_id) : false}
-          onToggleFavorite={toggleFavorite}
-        />
       </div>
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
