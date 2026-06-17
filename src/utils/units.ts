@@ -132,10 +132,13 @@ export function getVariableLabel(varId: string, apiDisplayName?: string): string
   return apiDisplayName ?? varId;
 }
 
-// Format a converted value for display — always 1 decimal place.
-// Wind direction is the only exception: whole degrees, no decimal point.
+// Format a converted value for display.
+// Rainfall uses 2 decimal places (inch values are small and lose precision at 1dp).
+// Wind direction: whole degrees. Everything else: 1 decimal place.
 export function formatValue(value: number, variableId?: string): string {
   if (variableId && /^WDrs/.test(variableId)) return Math.round(value).toString();
+  if (variableId && /^RF/.test(variableId)) return value.toFixed(2);
+  if (variableId && /^P(sl)?_/.test(variableId)) return value.toFixed(2);
   return value.toFixed(1);
 }
 

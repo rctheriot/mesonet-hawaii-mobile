@@ -67,7 +67,28 @@ function formatLabel(ts: number, range: TimeRange): string {
     return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
       ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   }
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
+    ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+// Bucket ms per range for rainfall aggregation — 5-min bars are unreadable on 3d/7d.
+const RAINFALL_BUCKET_MS: Partial<Record<TimeRange, number>> = {
+  '3d': 60 * 60 * 1000,
+  '7d': 60 * 60 * 1000,
+};
+
+function aggregateRainfallByHour(
+  data: { ts: number; value: number }[],
+  bucketMs: number,
+): { ts: number; value: number }[] {
+  const buckets = new Map<number, number>();
+  for (const d of data) {
+    const key = Math.floor(d.ts / bucketMs) * bucketMs;
+    buckets.set(key, (buckets.get(key) ?? 0) + d.value);
+  }
+  return Array.from(buckets.entries())
+    .map(([ts, value]) => ({ ts, value }))
+    .sort((a, b) => a.ts - b.ts);
 }
 
 type SeriesStats =
@@ -84,12 +105,13 @@ function computeStats(values: number[], isRainfall: boolean): SeriesStats {
   };
 }
 
-function StatsRow({ stats, varId, displayUnit, color, label }: {
+function StatsRow({ stats, varId, displayUnit, color, label, range }: {
   stats: SeriesStats;
   varId: string | null;
   displayUnit: string;
   color: 'sky' | 'amber';
   label: string;
+  range: TimeRange;
 }) {
   const dotClass = color === 'sky' ? 'bg-sky-400' : 'bg-amber-400';
   return (
@@ -101,7 +123,7 @@ function StatsRow({ stats, varId, displayUnit, color, label }: {
       <div className="flex items-center gap-2 flex-shrink-0">
         {stats.kind === 'rainfall' ? (
           <>
-            <span className="text-slate-400 dark:text-zinc-500">total </span>
+            <span className="text-slate-400 dark:text-zinc-500">{range} total </span>
             <span className="font-medium text-slate-700 dark:text-zinc-200">{formatValue(stats.total, varId ?? undefined)}</span>
             {displayUnit && <span className="text-slate-400 dark:text-zinc-500">{displayUnit}</span>}
           </>
@@ -120,7 +142,7 @@ function StatsRow({ stats, varId, displayUnit, color, label }: {
 
 export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartProps) {
   const [range, setRange] = useState<TimeRange>('24h');
-  const { settings } = useAppContext();
+  const { settings, setChartVars } = useAppContext();
 
   const { data: data0, isLoading: loading0, isError: error0 } = useHistoricalMeasurements(stationId, varId, range);
   const { data: data1, isLoading: loading1, isError: error1 } = useHistoricalMeasurements(stationId, varId2 ?? null, range);
@@ -150,27 +172,31 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
   const label0 = varId ? getVariableLabel(varId, data0?.[0]?.variable_display_name) : '';
   const label1 = varId2 ? getVariableLabel(varId2, data1?.[0]?.variable_display_name) : '';
 
-  const chartData0 = useMemo(() =>
-    (data0 ?? [])
+  const chartData0 = useMemo(() => {
+    const raw = (data0 ?? [])
       .slice()
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       .filter(m => m.value != null)
       .map(m => ({
         ts: new Date(m.timestamp).getTime(),
         value: convertValue(Number(m.value), rawUnits0, settings.units, varId ?? undefined).value,
-      })),
-  [data0, rawUnits0, settings.units, varId]);
+      }));
+    const bucketMs = RAINFALL_BUCKET_MS[range];
+    return isRainfall0 && bucketMs ? aggregateRainfallByHour(raw, bucketMs) : raw;
+  }, [data0, rawUnits0, settings.units, varId, isRainfall0, range]);
 
-  const chartData1 = useMemo(() =>
-    (data1 ?? [])
+  const chartData1 = useMemo(() => {
+    const raw = (data1 ?? [])
       .slice()
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       .filter(m => m.value != null)
       .map(m => ({
         ts: new Date(m.timestamp).getTime(),
         value: convertValue(Number(m.value), rawUnits1, settings.units, varId2 ?? undefined).value,
-      })),
-  [data1, rawUnits1, settings.units, varId2]);
+      }));
+    const bucketMs = RAINFALL_BUCKET_MS[range];
+    return isRainfall1 && bucketMs ? aggregateRainfallByHour(raw, bucketMs) : raw;
+  }, [data1, rawUnits1, settings.units, varId2, isRainfall1, range]);
 
   // Recharts requires a single data array for both the shared X axis and the hover tooltip
   // to interpolate correctly. Two independent fetches may have non-overlapping timestamps,
@@ -195,11 +221,11 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
     varId2 && chartData1.length > 0 ? computeStats(chartData1.map(d => d.value), isRainfall1) : null,
   [chartData1, isRainfall1, varId2]);
 
-  const isLoading = loading0 || (!!varId2 && loading1);
-  const isError = error0 || (!!varId2 && error1);
+  const isLoading = (!!varId && loading0) || (!!varId2 && loading1);
+  const isError = (!!varId && error0) || (!!varId2 && error1);
   const hasData = mergedData.length > 0;
 
-  if (!varId) {
+  if (!varId && !varId2) {
     return (
       <div className="space-y-2">
         <div className="h-40 w-full flex items-center justify-center border border-dashed border-slate-200 dark:border-zinc-700 rounded-lg">
@@ -222,10 +248,10 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
       {(stats0 || stats1) && (
         <div className="space-y-1">
           {stats0 && (
-            <StatsRow stats={stats0} varId={varId} displayUnit={displayUnit0} color="sky" label={label0} />
+            <StatsRow stats={stats0} varId={varId} displayUnit={displayUnit0} color="sky" label={label0} range={range} />
           )}
           {stats1 && (
-            <StatsRow stats={stats1} varId={varId2 ?? null} displayUnit={displayUnit1} color="amber" label={label1} />
+            <StatsRow stats={stats1} varId={varId2 ?? null} displayUnit={displayUnit1} color="amber" label={label1} range={range} />
           )}
         </div>
       )}
@@ -312,8 +338,8 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
         )}
       </div>
 
-      {/* Range buttons — below chart */}
-      <div className="flex gap-1">
+      {/* Range buttons + clear — below chart */}
+      <div className="flex items-center gap-1">
         {RANGES.map(r => (
           <button
             key={r.value}
@@ -327,6 +353,14 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
             {r.label}
           </button>
         ))}
+        {varId && (
+          <button
+            onClick={() => setChartVars([null, null])}
+            className="ml-auto px-3 py-1 rounded text-xs font-medium text-slate-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+          >
+            Clear
+          </button>
+        )}
       </div>
     </div>
   );
