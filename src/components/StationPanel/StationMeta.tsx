@@ -22,8 +22,8 @@ export default function StationMeta({ station, monitorData }: StationMetaProps) 
     { label: 'Network',   value: station.network },
     { label: 'Island',    value: station.island },
     { label: 'Elevation', value: elevationDisplay },
-    { label: 'Latitude',  value: station.lat?.toFixed(5) },
-    { label: 'Longitude', value: station.lng?.toFixed(5) },
+    { label: 'Latitude',  value: station.lat?.toFixed(2) },
+    { label: 'Longitude', value: station.lng?.toFixed(2) },
   ].filter(f => f.value != null);
 
   const allFields = [

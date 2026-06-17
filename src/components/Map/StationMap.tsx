@@ -52,6 +52,25 @@ function applyVarIcon(
   }
 }
 
+// ─── Location obfuscation ─────────────────────────────────────────────────────
+
+// Returns a small deterministic lat/lng offset for a station so its map marker
+// doesn't reveal the precise installation location. The same station_id always
+// produces the same offset (hash-based), so the map is consistent between
+// sessions. Real coordinates are used everywhere else (distance calc, flyTo).
+// ±0.0003° ≈ ±33 m per axis — max diagonal displacement ~45 m (~½ acre).
+function stationJitter(stationId: string): { dlat: number; dlng: number } {
+  let h = 0;
+  for (let i = 0; i < stationId.length; i++) {
+    h = Math.imul(h, 31) + stationId.charCodeAt(i);
+    h |= 0;
+  }
+  const a = ((h & 0xFFFF) >>> 0) / 0xFFFF;
+  const b = (((h >>> 16) & 0xFFFF) >>> 0) / 0xFFFF;
+  const MAX = 0.0003;
+  return { dlat: (a - 0.5) * 2 * MAX, dlng: (b - 0.5) * 2 * MAX };
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface StationMapProps {
   stations: Station[];
@@ -204,7 +223,9 @@ export default function StationMap({
 
       // New marker — always starts with status color; variable coloring applied
       // in the same effect pass once varColors is populated.
-      const marker = L.marker([lat, lng], {
+      // Apply a small deterministic offset to obscure the precise location.
+      const { dlat, dlng } = stationJitter(station_id);
+      const marker = L.marker([lat + dlat, lng + dlng], {
         icon: stationDivIcon(color, hollow),
         keyboard: false,
       });
