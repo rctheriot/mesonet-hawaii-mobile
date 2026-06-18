@@ -12,6 +12,8 @@ import StationMeta from '../components/StationPanel/StationMeta';
 import ReadingsGrid from '../components/StationPanel/ReadingsGrid';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
+import StationLocationMap from '../components/Map/StationLocationMap';
+import { STATUS_HEX } from '../theme';
 
 export default function StationDetail() {
   const { stationId } = useParams<{ stationId: string }>();
@@ -29,7 +31,7 @@ export default function StationDetail() {
   const { data: rainfall24hr } = useRainfall24hr(stationId ?? null);
   const { chartVars, selectVar } = useChartVars(stationId, measurements);
 
-  const [tab, setTab] = useState<'readings' | 'info'>('readings');
+  const [tab, setTab] = useState<'readings' | 'location' | 'info'>('readings');
 
   const station = stations.find(s => s.station_id === stationId) ?? null;
   const isFavorite = stationId ? favorites.has(stationId) : false;
@@ -235,7 +237,7 @@ export default function StationDetail() {
 
         {/* ── Tabs ──────────────────────────────────────────────────────────── */}
         <div className="flex gap-1 px-4 pt-3 pb-0 border-b border-slate-200 dark:border-zinc-700 flex-shrink-0">
-          {(['readings', 'info'] as const).map(t => (
+          {(['readings', 'location', 'info'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -245,7 +247,7 @@ export default function StationDetail() {
                   : 'border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200'
               }`}
             >
-              {t === 'readings' ? 'Readings' : 'Info'}
+              {t === 'readings' ? 'Readings' : t === 'location' ? 'Location' : 'Info'}
             </button>
           ))}
         </div>
@@ -280,6 +282,16 @@ export default function StationDetail() {
                 />
               )}
             </div>
+          </div>
+        )}
+
+        {tab === 'location' && (
+          <div className="h-96">
+            <StationLocationMap
+              station={station}
+              markerColor={STATUS_HEX[statusKey]}
+              darkMode={settings.darkMode}
+            />
           </div>
         )}
 

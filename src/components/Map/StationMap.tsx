@@ -57,7 +57,7 @@ function applyVarIcon(
 // produces the same offset (hash-based), so the map is consistent between
 // sessions. Real coordinates are used everywhere else (distance calc, flyTo).
 // ±0.0003° ≈ ±33 m per axis — max diagonal displacement ~45 m (~½ acre).
-function stationJitter(stationId: string): { dlat: number; dlng: number } {
+export function stationJitter(stationId: string): { dlat: number; dlng: number } {
   let h = 0;
   for (let i = 0; i < stationId.length; i++) {
     h = Math.imul(h, 31) + stationId.charCodeAt(i);
