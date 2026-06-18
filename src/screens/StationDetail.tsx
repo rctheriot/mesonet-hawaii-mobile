@@ -156,10 +156,8 @@ export default function StationDetail() {
         </div>
       </div>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto">
-
-        {/* ── Hero section ──────────────────────────────────────────────────── */}
+      {/* Hero — fixed, never scrolls */}
+      <div className="flex-shrink-0">
         <div className="px-5 pt-6 pb-5 border-b border-slate-100 dark:border-zinc-800">
           <div className="flex items-start justify-between gap-3 mb-1">
             <h1 className={`font-bold text-slate-900 dark:text-zinc-100 flex-1 ${stationNameClass}`}>
@@ -235,26 +233,29 @@ export default function StationDetail() {
           )}
         </div>
 
-        {/* ── Tabs ──────────────────────────────────────────────────────────── */}
-        <div className="flex gap-1 px-4 pt-3 pb-0 border-b border-slate-200 dark:border-zinc-700 flex-shrink-0">
-          {(['readings', 'location', 'info'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 text-base font-medium capitalize border-b-2 transition-colors -mb-px ${
-                tab === t
-                  ? 'border-sky-500 text-sky-500 dark:text-sky-400'
-                  : 'border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200'
-              }`}
-            >
-              {t === 'readings' ? 'Readings' : t === 'location' ? 'Location' : 'Info'}
-            </button>
-          ))}
-        </div>
+      </div>
 
+      {/* Tabs — always visible */}
+      <div className="flex-shrink-0 flex gap-1 px-4 pt-3 pb-0 border-b border-slate-200 dark:border-zinc-700">
+        {(['readings', 'location', 'info'] as const).map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 text-base font-medium capitalize border-b-2 transition-colors -mb-px ${
+              tab === t
+                ? 'border-sky-500 text-sky-500 dark:text-sky-400'
+                : 'border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200'
+            }`}
+          >
+            {t === 'readings' ? 'Readings' : t === 'location' ? 'Location' : 'Info'}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content — fills all remaining height */}
+      <div className="flex-1 min-h-0">
         {tab === 'readings' && (
-          <div className="px-4 pt-4 pb-8 space-y-6">
-            {/* ── History chart ─────────────────────────────────────────────── */}
+          <div className="h-full overflow-y-auto px-4 pt-4 pb-8 space-y-6">
             <div>
               <p className="text-sm font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
                 History
@@ -265,8 +266,6 @@ export default function StationDetail() {
                 varId2={chartVars[1]}
               />
             </div>
-
-            {/* ── Readings grid ──────────────────────────────────────────────── */}
             <div>
               <p className="text-sm font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
                 Current Readings
@@ -286,17 +285,15 @@ export default function StationDetail() {
         )}
 
         {tab === 'location' && (
-          <div className="h-96">
-            <StationLocationMap
-              station={station}
-              markerColor={STATUS_HEX[statusKey]}
-              darkMode={settings.darkMode}
-            />
-          </div>
+          <StationLocationMap
+            station={station}
+            markerColor={STATUS_HEX[statusKey]}
+            darkMode={settings.darkMode}
+          />
         )}
 
         {tab === 'info' && (
-          <div className="px-4 py-4">
+          <div className="h-full overflow-y-auto px-4 py-4">
             <StationMeta station={station} monitorData={monitorData} />
           </div>
         )}
