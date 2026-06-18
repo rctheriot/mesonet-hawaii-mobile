@@ -2,8 +2,7 @@ import { useState, useMemo } from 'react';
 import type { Station, StationMonitor } from '../../types/api';
 import { stationStatusKey, STATUS_DOT, STATUS_TEXT, STATUS_LABEL } from '../../theme';
 import { haversineKm } from '../Map/StationMap';
-
-type UnitSystem = 'metric' | 'imperial';
+import type { UnitSystem } from '../../utils/units';
 
 const VAR_UNITS: Record<string, { metric: string; imperial: string }> = {
   Tair_1_Avg:   { metric: '°C',   imperial: '°F'   },

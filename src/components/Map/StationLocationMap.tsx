@@ -13,16 +13,16 @@ const ATTRIBUTION =
   '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> ' +
   '© <a href="https://carto.com/attributions">CARTO</a>';
 
-// Bounding boxes [SW, NE] per island. fitBounds() computes center + zoom
-// automatically so the whole island is visible regardless of screen size.
+// Keys must match exactly what islandFromCoords() returns in src/api/stations.ts.
+// Bounds are trimmed aggressively to the main landmass so fitBounds picks the
+// highest zoom level that fits the island on a mobile screen.
 const ISLAND_BOUNDS: Record<string, L.LatLngBoundsLiteral> = {
-  'Hawaii':  [[18.91, -156.07], [20.27, -154.81]],
-  'Maui':    [[20.57, -156.70], [21.03, -155.98]],
-  'Oahu':    [[21.23, -158.30], [21.72, -157.64]],
-  'Kauai':   [[21.87, -159.79], [22.24, -159.29]],
-  'Molokai': [[21.05, -157.34], [21.23, -156.71]],
-  'Lanai':   [[20.71, -157.07], [20.94, -156.84]],
-  'Niihau':  [[21.83, -160.26], [21.99, -160.06]],
+  'Hawaiʻi Island': [[18.880300, -156.140442], [20.287961, -154.769897]],
+  'Maui':           [[20.562082, -156.735077], [21.050540, -155.965347]],
+  'Oʻahu':          [[21.245222, -158.294449], [21.718680, -157.637329]],
+  'Kauaʻi':         [[21.88, -159.78], [22.23, -159.30]],
+  'Molokaʻi':       [[21.032596, -157.329712], [21.233702, -156.691818]],
+  'Lānaʻi':         [[20.722722, -157.085609], [20.938034, -156.798592]],
 };
 
 interface Props {
@@ -46,7 +46,6 @@ export default function StationLocationMap({ station, markerColor, darkMode }: P
     const islandBounds = station.island ? ISLAND_BOUNDS[station.island] : undefined;
 
     const map = L.map(containerRef.current, {
-      // Placeholder view — overridden by fitBounds once the container is sized.
       center: [20.5, -157.5],
       zoom: 8,
       dragging:        false,
@@ -72,16 +71,18 @@ export default function StationLocationMap({ station, markerColor, darkMode }: P
       interactive: false,
     }).addTo(map);
 
-    // Defer fitBounds to the next animation frame so the flex container
-    // has its final painted dimensions before Leaflet measures it.
-    requestAnimationFrame(() => {
+    // Defer fitBounds until after the flex layout has fully settled.
+    // setTimeout(0) fires after the current event loop and CSS layout pass,
+    // giving the container its real pixel dimensions before Leaflet measures it.
+    setTimeout(() => {
+      if (!mapRef.current) return;
       map.invalidateSize();
       if (islandBounds) {
-        map.fitBounds(islandBounds, { padding: [32, 32], animate: false });
+        map.fitBounds(islandBounds, { padding: [4, 4], animate: false });
       } else {
         map.setView([markerLat, markerLng], 10, { animate: false });
       }
-    });
+    }, 0);
 
     mapRef.current = map;
 

@@ -6,14 +6,13 @@ import { useAppContext } from '../context/AppContext';
 import { useChartVars } from '../hooks/useChartVars';
 import { ALLOWED_VARIABLES, convertValue, formatValue, getVariableLabel } from '../utils/units';
 import { isStaleTimestamp, relativeTime } from '../utils/time';
-import { stationStatusKey, STATUS_TEXT, STATUS_LABEL } from '../theme';
+import { stationStatusKey, STATUS_TEXT, STATUS_LABEL, STATUS_HEX } from '../theme';
 import HistoryChart from '../components/StationPanel/HistoryChart';
 import StationMeta from '../components/StationPanel/StationMeta';
 import ReadingsGrid from '../components/StationPanel/ReadingsGrid';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
 import StationLocationMap from '../components/Map/StationLocationMap';
-import { STATUS_HEX } from '../theme';
 
 export default function StationDetail() {
   const { stationId } = useParams<{ stationId: string }>();
@@ -26,10 +25,12 @@ export default function StationDetail() {
   const { data: stations = [], isLoading: stationsLoading } = useStations();
   const { data: monitorData = {} } = useStationMonitor();
   const { data: measurements, isLoading: readingsLoading } = useLatestMeasurements(stationId ?? null);
-  // 24hr rainfall total — used in the hero when a rainfall variable is selected.
-  // ReadingsGrid fetches the same query key, so this is a cache hit when the grid is visible.
-  const { data: rainfall24hr } = useRainfall24hr(stationId ?? null);
   const { chartVars, selectVar } = useChartVars(stationId, measurements);
+
+  // 24hr rainfall total — only fetched when a rainfall variable is the hero.
+  // ReadingsGrid fetches the same query key, so subsequent grid renders are cache hits.
+  const heroIsRainfall = chartVars[0] ? /^RF/.test(chartVars[0]) : false;
+  const { data: rainfall24hr } = useRainfall24hr(stationId ?? null, heroIsRainfall);
 
   const [tab, setTab] = useState<'readings' | 'location' | 'info'>('readings');
 
@@ -247,7 +248,7 @@ export default function StationDetail() {
                 : 'border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200'
             }`}
           >
-            {t === 'readings' ? 'Readings' : t === 'location' ? 'Location' : 'Info'}
+            {t}
           </button>
         ))}
       </div>
