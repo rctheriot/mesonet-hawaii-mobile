@@ -14,7 +14,7 @@ interface Settings {
   mapLng: number;
   mapZoom: number;
   favSort: 'alpha' | 'value' | 'distance';
-  listSortBy: 'default' | 'nearme';
+  listSortBy: 'alpha' | 'nearme' | 'value';
   listIslandFilter: string;
 }
 
@@ -33,7 +33,7 @@ const DEFAULTS: Settings = {
   mapLng: -157.5,
   mapZoom: 7,
   favSort: 'alpha',
-  listSortBy: 'default',
+  listSortBy: 'alpha',
   listIslandFilter: 'all',
 };
 

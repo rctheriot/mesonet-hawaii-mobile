@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStations, useStationMonitor } from '../hooks/useStations';
-import { useLatestMeasurements } from '../hooks/useMeasurements';
+import { useLatestMeasurements, useRainfall24hr } from '../hooks/useMeasurements';
 import { useAppContext } from '../context/AppContext';
 import { useChartVars } from '../hooks/useChartVars';
 import { ALLOWED_VARIABLES, convertValue, formatValue, getVariableLabel } from '../utils/units';
 import { isStaleTimestamp, relativeTime } from '../utils/time';
-import { stationStatusKey, STATUS_BADGE, STATUS_LABEL } from '../theme';
+import { stationStatusKey, STATUS_TEXT, STATUS_LABEL } from '../theme';
 import HistoryChart from '../components/StationPanel/HistoryChart';
 import StationMeta from '../components/StationPanel/StationMeta';
 import ReadingsGrid from '../components/StationPanel/ReadingsGrid';
@@ -24,6 +24,9 @@ export default function StationDetail() {
   const { data: stations = [], isLoading: stationsLoading } = useStations();
   const { data: monitorData = {} } = useStationMonitor();
   const { data: measurements, isLoading: readingsLoading } = useLatestMeasurements(stationId ?? null);
+  // 24hr rainfall total — used in the hero when a rainfall variable is selected.
+  // TanStack caches this, so it's a free hit if Rainfall24hrCard already fetched it.
+  const { data: rainfall24hr } = useRainfall24hr(stationId ?? null);
   const { chartVars, selectVar } = useChartVars(stationId, measurements);
 
   const [tab, setTab] = useState<'readings' | 'info'>('readings');
@@ -53,6 +56,12 @@ export default function StationDetail() {
         m.variable?.toLowerCase().includes('tair')
       ) ?? readings[0]
     );
+  }, [readings, chartVars]);
+
+  // Second hero reading — shown side-by-side when a second chart var is active.
+  const heroReading2 = useMemo(() => {
+    if (!chartVars[1] || readings.length === 0) return null;
+    return readings.find(m => m.variable === chartVars[1]) ?? null;
   }, [readings, chartVars]);
 
   const statusKey = station ? stationStatusKey(station, monitorData) : 'unknown';
@@ -132,7 +141,14 @@ export default function StationDetail() {
         {/* ── Hero section ──────────────────────────────────────────────────── */}
         <div className="px-5 pt-6 pb-5 border-b border-slate-100 dark:border-zinc-800">
           <div className="flex items-start justify-between gap-3 mb-1">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-zinc-100 leading-tight flex-1">
+            <h1 className={`font-bold text-slate-900 dark:text-zinc-100 flex-1 ${
+              (() => {
+                const n = (station.full_name ?? station.name ?? station.station_id).length;
+                if (n > 30) return 'text-xl leading-snug';
+                if (n > 16) return 'text-2xl leading-tight';
+                return 'text-3xl leading-tight';
+              })()
+            }`}>
               {station.full_name ?? station.name ?? station.station_id}
             </h1>
             <button
@@ -151,31 +167,56 @@ export default function StationDetail() {
             </button>
           </div>
 
-          {/* Island + status badge */}
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <p className="text-base text-slate-500 dark:text-zinc-400">{station.island ?? 'Hawaii'}</p>
-            <span className={`text-sm px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[statusKey]}`}>
-              {STATUS_LABEL[statusKey]}
-            </span>
-            {isStale && (
-              <span className="text-sm font-medium px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700">
-                Stale Data
-              </span>
-            )}
-          </div>
-          {newestTimestamp && (
-            <p className="text-sm text-slate-500 dark:text-zinc-400 mb-4">
-              Updated {relativeTime(newestTimestamp)}
-            </p>
-          )}
+          {/* Subtitle: Status · Island · Updated — one muted line, no badge */}
+          <p className="text-sm text-slate-500 dark:text-zinc-400 mb-4">
+            <span className={STATUS_TEXT[statusKey]}>{STATUS_LABEL[statusKey]}</span>
+            {' · '}
+            {station.island ?? 'Hawaii'}
+            {newestTimestamp && <> · Updated {relativeTime(newestTimestamp)}</>}
+            {isStale && <span className="text-amber-500 dark:text-amber-400"> · Stale Data</span>}
+          </p>
 
           {readingsLoading ? (
             <p className="text-slate-400 text-base">Loading readings…</p>
-          ) : heroReading ? (
-            <div>
-              {(() => {
-                const c = convertValue(Number(heroReading.value), heroReading.units ?? '', settings.units, heroReading.variable);
+          ) : heroReading && heroReading2 ? (
+            /* Two variables selected — side by side, left-aligned (no stretching) */
+            <div className="flex gap-8">
+              {([
+                { reading: heroReading,  accent: 'border-sky-400' },
+                { reading: heroReading2, accent: 'border-amber-400' },
+              ] as const).map(({ reading, accent }) => {
+                const isRF = /^RF/.test(reading.variable);
+                const rawVal  = isRF && rainfall24hr != null ? rainfall24hr.total : Number(reading.value);
+                const rawUnit = isRF && rainfall24hr != null ? rainfall24hr.units  : (reading.units ?? '');
+                const c = convertValue(rawVal, rawUnit, settings.units, reading.variable);
+                const lbl = getVariableLabel(reading.variable, reading.variable_display_name)
+                  + (isRF ? ' (24hr)' : '');
                 return (
+                  <div key={reading.variable} className={`border-l-2 ${accent} pl-3`}>
+                    <div className="flex items-end gap-1.5">
+                      <span className="text-5xl font-bold text-slate-900 dark:text-zinc-100 leading-none tabular-nums">
+                        {formatValue(c.value, reading.variable)}
+                      </span>
+                      {c.unit && (
+                        <span className="text-xl text-slate-500 dark:text-zinc-400 mb-0.5">{c.unit}</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-zinc-400 mt-1 leading-snug">{lbl}</p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : heroReading ? (
+            /* Single variable — large centered reading */
+            (() => {
+              const isRF = /^RF/.test(heroReading.variable);
+              const rawVal  = isRF && rainfall24hr != null ? rainfall24hr.total : Number(heroReading.value);
+              const rawUnit = isRF && rainfall24hr != null ? rainfall24hr.units  : (heroReading.units ?? '');
+              const c = convertValue(rawVal, rawUnit, settings.units, heroReading.variable);
+              const lbl = getVariableLabel(heroReading.variable, heroReading.variable_display_name)
+                + (isRF ? ' (24hr)' : '');
+              return (
+                <div>
                   <div className="flex items-end gap-2">
                     <span className="text-6xl font-bold text-slate-900 dark:text-zinc-100 leading-none tabular-nums">
                       {formatValue(c.value, heroReading.variable)}
@@ -184,12 +225,10 @@ export default function StationDetail() {
                       <span className="text-2xl text-slate-500 dark:text-zinc-400 mb-1">{c.unit}</span>
                     )}
                   </div>
-                );
-              })()}
-              <p className="text-base text-slate-500 dark:text-zinc-400 mt-1">
-                {getVariableLabel(heroReading.variable, heroReading.variable_display_name)}
-              </p>
-            </div>
+                  <p className="text-base text-slate-500 dark:text-zinc-400 mt-1">{lbl}</p>
+                </div>
+              );
+            })()
           ) : (
             <p className="text-slate-400 dark:text-zinc-600 text-base">No readings available.</p>
           )}

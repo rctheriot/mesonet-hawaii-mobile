@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { Station, StationMonitor } from '../../types/api';
 import { stationStatusKey, STATUS_DOT, STATUS_TEXT, STATUS_LABEL } from '../../theme';
-import type { StatusKey } from '../../theme';
 import { haversineKm } from '../Map/StationMap';
 
 type UnitSystem = 'metric' | 'imperial';
@@ -36,21 +35,12 @@ interface StationListProps {
   onIslandFilterChange?: (v: string) => void;
 }
 
-type FilterStatus = 'all' | StatusKey;
-type SortBy = 'default' | 'nearme';
-
-const STATUS_OPTIONS: { label: string; value: FilterStatus }[] = [
-  { label: 'All',      value: 'all' },
-  { label: 'Active',   value: 'active' },
-  { label: 'Inactive', value: 'inactive' },
-  { label: 'Planned',  value: 'planned' },
-];
+type SortBy = 'alpha' | 'nearme' | 'value';
 
 export default function StationList({ stations, monitorData, onSelectStation, favorites, coords, requestLocation, geoLoading, geoError, mapMode, varLabels, units = 'metric', sortBy: sortByProp, onSortByChange, islandFilter: islandFilterProp, onIslandFilterChange }: StationListProps) {
-  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all');
   const [islandFilterLocal, setIslandFilterLocal] = useState<string>('all');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [sortByLocal, setSortByLocal] = useState<SortBy>('default');
+  const [sortByLocal, setSortByLocal] = useState<SortBy>('alpha');
 
   const sortBy = sortByProp ?? sortByLocal;
   const islandFilter = islandFilterProp ?? islandFilterLocal;
@@ -66,11 +56,10 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
   const filtered = useMemo(() => {
     return stations.filter(s => {
       if (favoritesOnly && !favorites.has(s.station_id)) return false;
-      if (statusFilter !== 'all' && stationStatusKey(s, monitorData) !== statusFilter) return false;
       if (islandFilter !== 'all' && (s.island ?? 'Hawaii') !== islandFilter) return false;
       return true;
     });
-  }, [stations, statusFilter, islandFilter, favoritesOnly, favorites, monitorData]);
+  }, [stations, islandFilter, favoritesOnly, favorites]);
 
   const sorted = useMemo(() => {
     if (sortBy === 'nearme' && coords) {
@@ -81,6 +70,22 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
              - haversineKm(coords.latitude, coords.longitude, b.lat, b.lng);
       });
     }
+    if (sortBy === 'alpha') {
+      return [...filtered].sort((a, b) =>
+        (a.full_name ?? a.name ?? '').localeCompare(b.full_name ?? b.name ?? '')
+      );
+    }
+    if (sortBy === 'value' && varLabels) {
+      return [...filtered].sort((a, b) => {
+        const av = parseFloat(varLabels.get(a.station_id) ?? '');
+        const bv = parseFloat(varLabels.get(b.station_id) ?? '');
+        if (isNaN(av) && isNaN(bv)) return 0;
+        if (isNaN(av)) return 1;
+        if (isNaN(bv)) return -1;
+        return bv - av;
+      });
+    }
+    // Default: active first, then alphabetical
     return [...filtered].sort((a, b) => {
       const order: Record<string, number> = { active: 0, inactive: 1, planned: 2, unknown: 3 };
       const aOrd = order[stationStatusKey(a, monitorData)] ?? 3;
@@ -92,84 +97,54 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
   return (
     <div className="absolute inset-0 flex flex-col bg-white dark:bg-zinc-950">
 
-      {/* Filter + sort bar — two compact rows */}
-      <div className="flex-shrink-0 border-b border-slate-100 dark:border-zinc-800 px-3 pt-2 pb-2 space-y-2">
-
-        {/* Row 1: Status + favorites filter chips */}
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
-          {STATUS_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => setStatusFilter(opt.value)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                statusFilter === opt.value
-                  ? 'bg-sky-500 text-white'
-                  : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
+      {/* Filter bar — single row: Saved · Island · Sort */}
+      <div className="flex-shrink-0 border-b border-slate-100 dark:border-zinc-800 px-3 py-2">
+        <div className="flex items-center gap-2">
+          {/* Saved filter */}
           <button
             onClick={() => setFavoritesOnly(f => !f)}
-            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium border transition-colors ${
               favoritesOnly
-                ? 'bg-green-500 text-white'
-                : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700'
+                ? 'bg-sky-500 border-sky-500 text-white'
+                : 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700'
             }`}
           >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill={favoritesOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={favoritesOnly ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
             Saved
           </button>
-        </div>
 
-        {/* Row 2: Sort toggle + island dropdown */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-400 dark:text-zinc-500 flex-shrink-0">Sort:</span>
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => setSortBy('default')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                sortBy === 'default'
-                  ? 'bg-slate-700 dark:bg-zinc-300 text-white dark:text-zinc-900'
-                  : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700'
-              }`}
-            >
-              Default
-            </button>
-            {/* Near Me sort — requests location lazily on first tap */}
-            <button
-              onClick={() => {
-                if (sortBy === 'nearme') {
-                  setSortBy('default');
-                } else {
-                  setSortBy('nearme');
-                  if (!coords) requestLocation();
-                }
-              }}
-              disabled={geoLoading}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors disabled:opacity-50 ${
-                sortBy === 'nearme'
-                  ? 'bg-slate-700 dark:bg-zinc-300 text-white dark:text-zinc-900'
-                  : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700'
-              }`}
-            >
-              {geoLoading ? 'Locating…' : 'Near Me'}
-            </button>
-          </div>
+          {/* Island filter — capped width so it never stretches on desktop */}
           <select
             value={islandFilter}
             onChange={e => setIslandFilter(e.target.value)}
-            className="ml-auto flex-shrink-0 text-sm bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            className="flex-shrink-0 max-w-[130px] text-xs bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-sky-500"
           >
             <option value="all">All Islands</option>
             {islands.map(island => (
               <option key={island} value={island}>{island}</option>
             ))}
           </select>
-          {geoError && sortBy === 'nearme' && (
-            <p className="text-sm text-red-500 dark:text-red-400 truncate">{geoError}</p>
-          )}
+
+          {/* Sort */}
+          <select
+            value={sortBy}
+            onChange={e => {
+              const val = e.target.value as SortBy;
+              if (val === 'nearme' && !coords) requestLocation();
+              setSortBy(val);
+            }}
+            className="flex-shrink-0 text-xs bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-sky-500"
+          >
+            <option value="alpha">A–Z</option>
+            <option value="nearme">{geoLoading ? 'Locating…' : 'Distance'}</option>
+            <option value="value">By Value</option>
+          </select>
         </div>
+        {geoError && sortBy === 'nearme' && (
+          <p className="text-xs text-red-500 dark:text-red-400 mt-1">{geoError}</p>
+        )}
       </div>
 
       {/* Station rows */}
@@ -179,8 +154,14 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
         )}
         {sorted.map(station => {
           const key = stationStatusKey(station, monitorData);
-          const distance = sortBy === 'nearme' && coords && station.lat && station.lng
+          const isSaved = favorites.has(station.station_id);
+          const distKm = coords && station.lat && station.lng
             ? haversineKm(coords.latitude, coords.longitude, station.lat, station.lng)
+            : null;
+          const distLabel = distKm != null
+            ? units === 'imperial'
+              ? `${(distKm / 1.60934).toFixed(1)} mi`
+              : `${distKm.toFixed(1)} km`
             : null;
           return (
             <button
@@ -190,22 +171,23 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
             >
               <div className={`w-3 h-3 rounded-full flex-shrink-0 ${STATUS_DOT[key]}`} />
               <div className="flex-1 min-w-0">
-                <div className="text-base font-medium text-slate-900 dark:text-zinc-100 truncate">
-                  {station.full_name ?? station.name ?? station.station_id}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  {isSaved && (
+                    <svg className="flex-shrink-0 text-sky-500 dark:text-sky-400" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+                    </svg>
+                  )}
+                  <span className="text-base font-medium text-slate-900 dark:text-zinc-100 truncate">
+                    {station.full_name ?? station.name ?? station.station_id}
+                  </span>
                 </div>
                 <div className="text-sm text-slate-400 dark:text-zinc-500">
                   {station.island ?? 'Hawaii'}
-                  {favorites.has(station.station_id) && (
-                    <span className="text-green-600 dark:text-green-400 font-medium"> · Saved</span>
-                  )}
+                  {distLabel && <> · {distLabel}</>}
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                {distance != null ? (
-                  <span className="text-sm text-slate-500 dark:text-zinc-400">
-                    {distance.toFixed(1)} km
-                  </span>
-                ) : mapMode && mapMode !== 'status' && varLabels ? (
+              <div className="flex-shrink-0">
+                {mapMode && mapMode !== 'status' && varLabels ? (
                   <span className="text-sm font-semibold text-slate-700 dark:text-zinc-300 tabular-nums">
                     {varLabels.get(station.station_id)
                       ? `${varLabels.get(station.station_id)} ${VAR_UNITS[mapMode]?.[units] ?? ''}`
