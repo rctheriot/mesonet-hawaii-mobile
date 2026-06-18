@@ -25,7 +25,7 @@ export default function StationDetail() {
   const { data: monitorData = {} } = useStationMonitor();
   const { data: measurements, isLoading: readingsLoading } = useLatestMeasurements(stationId ?? null);
   // 24hr rainfall total — used in the hero when a rainfall variable is selected.
-  // TanStack caches this, so it's a free hit if Rainfall24hrCard already fetched it.
+  // ReadingsGrid fetches the same query key, so this is a cache hit when the grid is visible.
   const { data: rainfall24hr } = useRainfall24hr(stationId ?? null);
   const { chartVars, selectVar } = useChartVars(stationId, measurements);
 
@@ -99,6 +99,25 @@ export default function StationDetail() {
     );
   }
 
+  // Resolve the raw value and unit for a hero reading, substituting the 24hr
+  // rainfall total when the variable is a rainfall accumulator.
+  function resolveHeroData(reading: NonNullable<typeof heroReading>) {
+    const isRF = /^RF/.test(reading.variable);
+    const rawVal  = isRF && rainfall24hr != null ? rainfall24hr.total : Number(reading.value);
+    const rawUnit = isRF && rainfall24hr != null ? rainfall24hr.units  : (reading.units ?? '');
+    const c   = convertValue(rawVal, rawUnit, settings.units, reading.variable);
+    const lbl = getVariableLabel(reading.variable, reading.variable_display_name)
+      + (isRF ? ' (24hr)' : '');
+    return { c, lbl };
+  }
+
+  const stationNameClass = (() => {
+    const n = (station.full_name ?? station.name ?? station.station_id).length;
+    if (n > 30) return 'text-xl leading-snug';
+    if (n > 16) return 'text-2xl leading-tight';
+    return 'text-3xl leading-tight';
+  })();
+
   return (
     <>
     <div className="w-full h-full flex flex-col bg-white dark:bg-zinc-950 overflow-hidden">
@@ -141,14 +160,7 @@ export default function StationDetail() {
         {/* ── Hero section ──────────────────────────────────────────────────── */}
         <div className="px-5 pt-6 pb-5 border-b border-slate-100 dark:border-zinc-800">
           <div className="flex items-start justify-between gap-3 mb-1">
-            <h1 className={`font-bold text-slate-900 dark:text-zinc-100 flex-1 ${
-              (() => {
-                const n = (station.full_name ?? station.name ?? station.station_id).length;
-                if (n > 30) return 'text-xl leading-snug';
-                if (n > 16) return 'text-2xl leading-tight';
-                return 'text-3xl leading-tight';
-              })()
-            }`}>
+            <h1 className={`font-bold text-slate-900 dark:text-zinc-100 flex-1 ${stationNameClass}`}>
               {station.full_name ?? station.name ?? station.station_id}
             </h1>
             <button
@@ -167,7 +179,6 @@ export default function StationDetail() {
             </button>
           </div>
 
-          {/* Subtitle: Status · Island · Updated — one muted line, no badge */}
           <p className="text-sm text-slate-500 dark:text-zinc-400 mb-4">
             <span className={STATUS_TEXT[statusKey]}>{STATUS_LABEL[statusKey]}</span>
             {' · '}
@@ -179,18 +190,12 @@ export default function StationDetail() {
           {readingsLoading ? (
             <p className="text-slate-400 text-base">Loading readings…</p>
           ) : heroReading && heroReading2 ? (
-            /* Two variables selected — side by side, left-aligned (no stretching) */
             <div className="flex gap-8">
               {([
                 { reading: heroReading,  accent: 'border-sky-400' },
                 { reading: heroReading2, accent: 'border-amber-400' },
               ] as const).map(({ reading, accent }) => {
-                const isRF = /^RF/.test(reading.variable);
-                const rawVal  = isRF && rainfall24hr != null ? rainfall24hr.total : Number(reading.value);
-                const rawUnit = isRF && rainfall24hr != null ? rainfall24hr.units  : (reading.units ?? '');
-                const c = convertValue(rawVal, rawUnit, settings.units, reading.variable);
-                const lbl = getVariableLabel(reading.variable, reading.variable_display_name)
-                  + (isRF ? ' (24hr)' : '');
+                const { c, lbl } = resolveHeroData(reading);
                 return (
                   <div key={reading.variable} className={`border-l-2 ${accent} pl-3`}>
                     <div className="flex items-end gap-1.5">
@@ -207,14 +212,8 @@ export default function StationDetail() {
               })}
             </div>
           ) : heroReading ? (
-            /* Single variable — large centered reading */
             (() => {
-              const isRF = /^RF/.test(heroReading.variable);
-              const rawVal  = isRF && rainfall24hr != null ? rainfall24hr.total : Number(heroReading.value);
-              const rawUnit = isRF && rainfall24hr != null ? rainfall24hr.units  : (heroReading.units ?? '');
-              const c = convertValue(rawVal, rawUnit, settings.units, heroReading.variable);
-              const lbl = getVariableLabel(heroReading.variable, heroReading.variable_display_name)
-                + (isRF ? ' (24hr)' : '');
+              const { c, lbl } = resolveHeroData(heroReading);
               return (
                 <div>
                   <div className="flex items-end gap-2">

@@ -92,7 +92,7 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
       const bOrd = order[stationStatusKey(b, monitorData)] ?? 3;
       return aOrd !== bOrd ? aOrd - bOrd : (a.full_name ?? a.name ?? '').localeCompare(b.full_name ?? b.name ?? '');
     });
-  }, [filtered, monitorData, sortBy, coords]);
+  }, [filtered, monitorData, sortBy, coords, varLabels]);
 
   return (
     <div className="absolute inset-0 flex flex-col bg-white dark:bg-zinc-950">
