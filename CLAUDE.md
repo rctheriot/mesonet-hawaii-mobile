@@ -56,39 +56,38 @@ A mobile-first PWA for browsing real-time Hawaii weather station data from the H
 - **HTTP client:** Native `fetch` via `apiGet<T>(path, params?)` in `src/api/client.ts`. Returns `{ data: T }`. Never use axios.
 - **Key endpoints:**
   - `GET /mesonet/db/stations?location=hawaii&limit=1000` — all stations
-  - `GET /mesonet/db/stationMonitor?location=hawaii` — returns `{ coverage, data: { station_id: { 24hr_min, 24hr_max, 24hr_avg_diff } } }`. Presence of a station_id in `data` means it reported in the last 24h.
   - `GET /mesonet/db/measurements?station_ids=&limit=50&join_metadata=true&local_tz=true&location=hawaii` — latest readings
-  - `GET /mesonet/db/variables?location=hawaii&limit=1000` — variable metadata (standard_name, display_name, units)
+  - `GET /mesonet/db/variables?location=hawaii&limit=1000` — variable metadata (standard_name, display_name, units). Not currently fetched by the app.
+  - The `stationMonitor` endpoint was previously used to derive status but is no longer called — status now comes straight from the `stations` payload (see Status System).
 - **Field names:** stations use `lat`/`lng` (not latitude/longitude). Measurements use `variable` (not `var_id`), `variable_display_name`, `value` (may be string, cast with `Number()`).
-- **Variable name mismatch:** Monitor data keys (e.g. `RH_Avg`) may differ from variables API `standard_name` (e.g. `RH_1_Avg`). A normalization pass strips sensor numbers (`_1_`, `_2_`) as fallback when building display name maps.
+- **Sensor-number normalization:** `VariableInfoModal` strips sensor numbers (`_2_`/`_3_` → `_1_`) as a fallback so sensors 2–4 still resolve a glossary entry when their exact ID isn't defined.
 
 ## Status System
 Defined in `src/theme.ts`. Three statuses only: `active` | `inactive` | `planned` (plus `unknown` as fallback).
-- **Active** = green (`#22c55e`) — station has `status: 'active'` AND appears in monitor data
-- **Inactive** = red (`#ef4444`) — `status: 'inactive'` OR active station not in monitor data
-- **Planned** = yellow (`#eab308`) — `status: 'planned'`
-- `stationStatusKey(station, monitorData)` is the single source of truth for derived status everywhere.
-- **Stale data** (last report >24h ago) is shown only as an amber tag in the StationPanel header — not reflected in map colors or list status.
+- Status comes **straight from the database `status` field** — the frontend does not reinterpret it. `stationStatusKey(station)` is the single source of truth everywhere.
+- **Active** = green (`#22c55e`) · **Inactive** = red (`#ef4444`) · **Planned** = yellow (`#eab308`) · anything else = `unknown` gray.
+- **Stale data** (last report >24h ago, derived from the latest measurement timestamps) is shown only as an amber tag in the `StationDetail` subtitle — not reflected in map colors or list status.
 
 ## Architecture Notes
 
 ### App.tsx
-Central state hub. Owns: selected station, view (map/list), dark mode, flyTo/panTo coords, panel height. Uses `useSettings` hook to persist all of these to localStorage.
+Thin shell: sets up `QueryClientProvider`, `AppProvider`, and `BrowserRouter`, then renders `AppLayout`. Routes: `/` (HomeScreen), `/explore` (ExploreScreen), `/station/:stationId` (StationDetail). `BottomNav` (My Stations / Station Network) is shown on every route except `/station/*`. App-wide state lives in `AppContext`, not here.
 
 ### Map (StationMap.tsx)
 - Map is **always mounted**, hidden via `className="hidden"` in list view to preserve camera state.
-- Markers are `L.Marker` instances with custom `DivIcon`s managed in `markersRef`. `markerMetaRef` stores `{ color, hollow }` per station — must stay in sync with visual state or highlight effect will use stale colors.
-- `onSelectStation` is stored in a ref (`onSelectStationRef`) so it's not a dependency of the markers effect — prevents markers from resetting on every render.
-- Selected station uses `selectedPinIcon` from `mapIcons.ts` (sky blue pin).
-- Leaflet requires `map.invalidateSize()` after a hidden→visible transition — called in a `useEffect` watching `isVisible`, and also debounced when panel height changes.
-- Variable coloring mode: when a map variable is selected, markers show colored pill labels via `stationDivIcon()`. Stations with no data get a gray dot. `MapLegend.tsx` renders the color scale below the map controls.
+- Markers are `L.Marker` instances with custom `DivIcon`s managed in `markersRef`. `metaRef` stores `{ color, hollow }` per station — must stay in sync with visual state or the highlight effect will use stale colors.
+- `onSelectStation` is stored in a ref (`onSelectRef`) so it's not a dependency of the markers effect — prevents markers from resetting on every render.
+- Selected station uses `selectedPinIcon` from `mapIcons.ts` (sky blue pin). Marker positions are jittered via `stationJitter()` (exported, also reused by `StationLocationMap`).
+- Leaflet requires `map.invalidateSize()` after a hidden→visible transition — called in a `useEffect` watching `isVisible`, and also debounced when `panelHeight` changes.
+- Variable coloring mode: when a map variable is selected, markers show colored pill labels via `stationDivIcon()`. Stations with no data get a gray dot. `MapLegend.tsx` renders the color scale bottom-left.
 - Map modes defined as `MapMode` type in `StationMap.tsx`: `status` | variable standard_names (e.g. `Tair_1_Avg`, `WS_1_Avg`).
 
-### StationPanel
-- Drag-to-resize using pointer capture events. Height stored as ratio in `useSettings` so it restores correctly across different screen sizes.
-- `onHeightChange` fires in real-time during drag so map/list containers shrink to avoid overlap.
-- `isMountedRef` — the style-swap effect skips on first mount to prevent wiping markers before they're added.
-- Readings rendered via `ReadingsGrid` — a shared component that groups measurements by category, merges wind speed/direction, and handles the 24hr rainfall card.
+### StationDetail (full-page station view)
+- Reached by navigating to `/station/:stationId` from a map marker or list row. Replaced the old draggable slide-up panel entirely.
+- Sub-components live in `src/components/StationDetail/`: `HistoryChart`, `ReadingsGrid`, `Rainfall24hrCard`, `StationMeta`.
+- Hero shows one large reading, or two side-by-side (sky/amber accents) when two chart variables are selected. Rainfall in the hero shows the 24hr total via `useRainfall24hr`.
+- Three tabs: **Readings** (chart + readings grid), **Location** (static `StationLocationMap`), **Info** (`StationMeta`).
+- Readings rendered via `ReadingsGrid` — groups measurements by category, merges wind speed/direction, and handles the 24hr rainfall card.
 - Chart variable selection managed by `useChartVars` hook — supports two simultaneous variables (dual-series chart). Selection persists across station navigation when the variable exists on the new station.
 
 ### PWAInstallPrompt
@@ -104,7 +103,7 @@ Provides app-wide state without prop-drilling. Owns: `settings` (via `useSetting
 Used in list view (`StationList`) and the HomeScreen favorites list. Shows station name, island, status dot, relative last-report time, and one variable reading (the currently selected `varId`). Fetches its own measurements via `useLatestMeasurements`.
 
 ### Persistence (localStorage)
-- `useSettings` — darkMode, view, lastStationId, panelHeightRatio
+- `useSettings` — darkMode, units, view/homeView, homeVarId, mapMode, map camera (mapLat/mapLng/mapZoom), favSort, listSortBy, listIslandFilter
 - `useFavorites` — Set of favorited station IDs
 
 ## Deploy Workflow
@@ -115,21 +114,22 @@ rsync -avz --delete dist/ exouser@<domain>:/home/exouser/mesonet/
 Served via nginx on a Jetstream2 VM with Let's Encrypt SSL. nginx config at `/etc/nginx/sites-available/mesonet`. Files at `/home/exouser/mesonet/` (requires `chmod o+x /home/exouser`).
 
 ## Screens
-- **HomeScreen** — favorites map view. Shows a Leaflet map filtered to favorited stations with variable coloring, plus a scrollable favorites list below. Falls back to an empty-state prompt when no favorites exist.
-- **ExploreScreen** — full station list + map. Stations sortable by distance (uses `haversineKm` exported from `StationMap.tsx`). Selecting a station opens the `StationPanel`.
-- **StationDetail** — full-page station view (used on larger screens or direct navigation). Same panel content as `StationPanel`.
+Browse → tap → detail. Tapping a station on any map or list navigates to `/station/:id`.
+- **HomeScreen** (`/`, "My Stations") — saved stations only. Map/list toggle with variable coloring; empty-state prompt when no favorites exist.
+- **ExploreScreen** (`/explore`, "Station Network") — all stations, map/list toggle. List sortable A–Z / Distance / By Value (distance uses `haversineKm` exported from `StationMap.tsx`).
+- **StationDetail** (`/station/:id`) — full-page station view; see Architecture Notes.
 
 ## Utility Modules
 - `src/utils/mapColor.ts` — per-variable color scale interpolation (`stopsToHex`) and CSS gradient strings for the map legend. Defines color stops for temperature, wind speed, humidity, soil moisture, solar radiation, and rainfall.
 - `src/utils/time.ts` — `relativeTime(ts)` (e.g. "5m ago") and `isStaleTimestamp(ts)` (>24h check).
-- `src/utils/units.ts` — unit conversion, `formatValue`, `ALLOWED_VARIABLES`, `groupByCategory`, `mergeWindReadings`.
+- `src/utils/units.ts` — unit conversion, `formatValue`, `ALLOWED_VARIABLES`, `groupByCategory`, `mergeWindReadings`, `kmToMiles`.
 
 ## Island Name Derivation
 The API has no `island` field. Island names are derived from lat/lng bounding boxes in `src/api/stations.ts → islandFromCoords()`.
 
 ## Known Constraints / Decisions
 - API key is baked into the Vite bundle at build time (acceptable for now, read-only public data API). Plan to proxy through server-side to hide key in the future.
-- Monitor data only contains variables reported in the last 24h — soil temp, sky temp, rainfall etc. won't appear in dropdowns until active stations report them.
+- Map markers are jittered ±0.0003° (deterministic per `station_id`) and the Info tab shows coordinates at 2dp, to obscure exact installation locations. Real coordinates are used everywhere else (distance, fly-to).
 - Variable sort in list view was removed pending stakeholder input on which variables matter most.
 - Star markers on map for favorites were tried and removed (hard to read) — circles only for now.
 - Vite 7.3.1 has 3 dev-server CVEs (path traversal, fs.deny bypass, arbitrary file read). These are **dev server only** and cannot be exploited in the nginx production deployment. They will be resolved when vite-plugin-pwa releases a version supporting Vite 8 that is ≥30 days old.

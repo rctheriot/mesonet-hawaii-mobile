@@ -62,11 +62,11 @@ export function smToHex(frac: number): string { return rhToHex(frac * 100); }
 export const SM_RANGE = { min: 0, max: 100 }; // display percent
 export const SM_GRADIENT_CSS = RH_GRADIENT_CSS;
 
-// ── Shortwave radiation — 0 W/m² (gray) → 500 (amber) → 1000 (bright yellow) ─
+// ── Shortwave radiation — 0 W/m² (blue) → 500 (orange) → 1000 (red) ──────────
 const SW_STOPS: ColorStop[] = [
-  { t:    0, rgb: [ 59, 130, 246] }, // blue-500  — no sun
+  { t:    0, rgb: [ 59, 130, 246] }, // blue-500   — no sun
   { t:  500, rgb: [249, 115,  22] }, // orange-500 — moderate
-  { t: 1000, rgb: [239,  68,  68] }, // red-500   — peak sun
+  { t: 1000, rgb: [239,  68,  68] }, // red-500    — peak sun
 ];
 export function swToHex(wm2: number): string { return stopsToHex(SW_STOPS, wm2); }
 export const SW_RANGE = { min: SW_STOPS[0].t, max: SW_STOPS[SW_STOPS.length - 1].t };

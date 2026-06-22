@@ -11,13 +11,6 @@ export interface Station {
   [key: string]: unknown;
 }
 
-export interface Variable {
-  standard_name: string;
-  display_name: string;
-  units?: string;
-  [key: string]: unknown;
-}
-
 export interface Measurement {
   station_id: string;
   variable: string;
@@ -27,13 +20,6 @@ export interface Measurement {
   // When join_metadata=true, these may be present
   variable_display_name?: string;
   units?: string;
-  [key: string]: unknown;
-}
-
-// Monitor data: presence of a station_id key means it reported in the last 24h
-export interface StationMonitor {
-  '24hr_min'?: Record<string, number>;
-  '24hr_max'?: Record<string, number>;
   [key: string]: unknown;
 }
 

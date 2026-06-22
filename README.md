@@ -54,13 +54,13 @@ All packages are pinned to exact versions. See [dependency policy](#dependency-p
 ```
 src/
 ├── api/           # API client (native fetch) + per-resource fetch functions
-├── components/    # Reusable UI components (Map, StationPanel, StationList, etc.)
-├── context/       # AppContext — dark mode, settings, favorites
+├── components/    # Reusable UI components (Map, StationDetail, StationList, Nav, etc.)
+├── context/       # AppContext — dark mode, settings, favorites, chart selection
 ├── hooks/         # useStations, useMeasurements, useSettings, useFavorites, useGeolocation
 ├── screens/       # Top-level route components (HomeScreen, ExploreScreen, StationDetail)
 ├── types/         # Shared TypeScript types
 ├── theme.ts       # Status system (active/inactive/planned) and color constants
-└── utils/         # Unit conversion helpers
+└── utils/         # Unit conversion, map color scales, time formatting
 ```
 
 ## API

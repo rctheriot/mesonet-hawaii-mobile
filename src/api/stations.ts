@@ -1,5 +1,5 @@
 import { apiGet } from './client';
-import type { Station, StationMonitor } from '../types/api';
+import type { Station } from '../types/api';
 
 // The API provides no island field, so we derive it from bounding boxes.
 // Order matters: Oʻahu must come before Molokaʻi/Lānaʻi since their latitude
@@ -30,8 +30,3 @@ export async function fetchStations(): Promise<Station[]> {
   });
 }
 
-export async function fetchStationMonitor(): Promise<Record<string, StationMonitor>> {
-  const { data } = await apiGet<{ data?: Record<string, StationMonitor> }>('/mesonet/db/stationMonitor', { location: 'hawaii' });
-  // API returns { coverage: [...], data: { station_id: stats } }
-  return data?.data ?? {};
-}

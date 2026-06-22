@@ -10,7 +10,7 @@ import MapLegend, { type MapMode } from '../components/Map/MapLegend';
 import VariableInfoModal from '../components/Glossary/VariableInfoModal';
 import { convertValue } from '../utils/units';
 import { tempToHex, windToHex, rhToHex, rainToHex, smToHex, swToHex } from '../utils/mapColor';
-import { useStations, useStationMonitor } from '../hooks/useStations';
+import { useStations } from '../hooks/useStations';
 import { useMapRainfall24hr } from '../hooks/useMeasurements';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { fetchLatestMeasurements, fetchHistoricalMeasurements } from '../api/measurements';
@@ -34,7 +34,6 @@ export default function HomeScreen() {
   const { homeVarId, homeView, darkMode, mapLat, mapLng, mapZoom, favSort } = settings;
 
   const { data: stations = [] } = useStations();
-  const { data: monitorData = {} } = useStationMonitor();
   const { coords, loading: geoLoading, requestLocation } = useGeolocation();
   const { data: rainfallMap } = useMapRainfall24hr(homeVarId === 'RF_1_Tot300s');
 
@@ -282,7 +281,7 @@ export default function HomeScreen() {
                 You haven't added any stations yet.
               </p>
               <p className="text-slate-400 dark:text-zinc-500 text-base leading-relaxed">
-                Tap <strong className="text-slate-600 dark:text-zinc-300">Explore</strong> to browse the map or station list, then tap <strong className="text-slate-600 dark:text-zinc-300">Save</strong> on any station to add it here.
+                Tap <strong className="text-slate-600 dark:text-zinc-300">Station Network</strong> to browse the map or station list, then tap <strong className="text-slate-600 dark:text-zinc-300">Save</strong> on any station to add it here.
               </p>
             </div>
             <button
@@ -300,7 +299,6 @@ export default function HomeScreen() {
             >
               <StationMap
                 stations={myStations}
-                monitorData={monitorData}
                 selectedStationId={null}
                 onSelectStation={(id) => navigate('/station/' + id)}
                 flyToCoords={flyTo}
@@ -345,7 +343,6 @@ export default function HomeScreen() {
                     <StationCard
                       key={station.station_id}
                       station={station}
-                      monitorData={monitorData}
                       varId={homeVarId}
                       rainfallMap={rainfallMap}
                       distanceKm={distanceMap.get(station.station_id)}

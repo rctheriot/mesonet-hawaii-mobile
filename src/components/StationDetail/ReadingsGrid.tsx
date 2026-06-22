@@ -22,9 +22,7 @@ const PRIORITY_VARS = new Set([
   'SM_1_Avg', 'Tsoil_1_Avg', 'WS_1_Avg',
 ]);
 
-// Pure rendering component for the station readings grid.
-// No data fetching — receives already-processed measurements from the caller.
-// Used by both LatestReadings (explore panel) and StationDetail (full page).
+// Small info button overlaid on each reading card; opens that variable's glossary entry.
 function InfoButton({ varId, onClick }: { varId: string; onClick: (varId: string) => void }) {
   return (
     <button
@@ -41,6 +39,8 @@ function InfoButton({ varId, onClick }: { varId: string; onClick: (varId: string
   );
 }
 
+// Pure rendering component for the station readings grid — no data fetching.
+// Receives already-deduplicated, allowed-only measurements from StationDetail.
 export default function ReadingsGrid({ stationId, readings, selectedVarIds, onSelectVar }: ReadingsGridProps) {
   const { settings, openInstallPrompt } = useAppContext();
   const [infoVarId, setInfoVarId] = useState<string | null>(null);

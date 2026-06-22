@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { Station, StationMonitor } from '../../types/api';
+import type { Station } from '../../types/api';
 import { stationStatusKey, STATUS_HEX, STATUS_HOLLOW } from '../../theme';
 import { stationDivIcon, selectedPinIcon, userLocationIcon } from './mapIcons';
 
@@ -72,7 +72,6 @@ export function stationJitter(stationId: string): { dlat: number; dlng: number }
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface StationMapProps {
   stations: Station[];
-  monitorData: Record<string, StationMonitor>;
   selectedStationId: string | null;
   onSelectStation: (stationId: string) => void;
   flyToCoords?: { lat: number; lng: number; zoom?: number };
@@ -100,7 +99,6 @@ interface StationMapProps {
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function StationMap({
   stations,
-  monitorData,
   selectedStationId,
   onSelectStation,
   flyToCoords,
@@ -148,7 +146,7 @@ export default function StationMap({
       });
     }
 
-    const tile = L.tileLayer(TILE_URL.light, {
+    const tile = L.tileLayer(TILE_URL[darkMode ? 'dark' : 'light'], {
       attribution: ATTRIBUTION,
       subdomains: 'abcd',
       maxZoom: 19,
@@ -201,7 +199,7 @@ export default function StationMap({
       const { station_id, lat, lng } = station;
       if (!lat || !lng) return;
 
-      const key    = stationStatusKey(station, monitorData);
+      const key    = stationStatusKey(station);
       const color  = STATUS_HEX[key];
       const hollow = STATUS_HOLLOW[key];
       // Keep metaRef in sync so effect 5 can restore the right status color
@@ -224,7 +222,7 @@ export default function StationMap({
       marker.addTo(map);
       markersRef.current[station_id] = marker;
     });
-  }, [stations, monitorData, varColors, varLabels, varArrows]);
+  }, [stations, varColors, varLabels, varArrows]);
 
   // ── 5. Selected station → teardrop pin ───────────────────────────────────
   useEffect(() => {

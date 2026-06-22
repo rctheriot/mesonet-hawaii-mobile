@@ -1,20 +1,19 @@
-import type { Station, StationMonitor } from '../../types/api';
+import type { Station } from '../../types/api';
 import { stationStatusKey, STATUS_BADGE, STATUS_LABEL } from '../../theme';
 import { useAppContext } from '../../context/AppContext';
 
 interface StationMetaProps {
   station: Station;
-  monitorData: Record<string, StationMonitor>;
 }
 
-export default function StationMeta({ station, monitorData }: StationMetaProps) {
+export default function StationMeta({ station }: StationMetaProps) {
   const { settings } = useAppContext();
-  const statusKey = stationStatusKey(station, monitorData);
+  const statusKey = stationStatusKey(station);
 
   const elevationDisplay = station.elevation != null
     ? settings.units === 'imperial'
       ? `${Math.round(station.elevation * 3.28084)} ft`
-      : `${station.elevation} m`
+      : `${Math.round(station.elevation)} m`
     : undefined;
 
   const fields = [

@@ -3,8 +3,6 @@ import { useState, useCallback } from 'react';
 interface Settings {
   darkMode: boolean;
   view: 'map' | 'list';
-  lastStationId: string | null;
-  panelHeightRatio: number;
   homeVarId: string | null;
   units: 'metric' | 'imperial';
   mapMode: string;
@@ -23,8 +21,6 @@ const KEY = 'mesonet-settings';
 const DEFAULTS: Settings = {
   darkMode: false,
   view: 'map',
-  lastStationId: null,
-  panelHeightRatio: 0.5,
   homeVarId: 'RF_1_Tot300s',
   units: 'imperial',
   mapMode: 'RF_1_Tot300s',

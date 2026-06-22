@@ -1,24 +1,23 @@
 import { useMemo } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { useLatestMeasurements, useRainfall24hr } from '../hooks/useMeasurements';
-import { ALLOWED_VARIABLES, convertValue, formatValue, mergeWindReadings } from '../utils/units';
+import { ALLOWED_VARIABLES, convertValue, formatValue, mergeWindReadings, kmToMiles } from '../utils/units';
 import { relativeTime } from '../utils/time';
 import { stationStatusKey, STATUS_DOT } from '../theme';
-import type { Station, StationMonitor } from '../types/api';
+import type { Station } from '../types/api';
 
 interface StationCardProps {
   station: Station;
-  monitorData: Record<string, StationMonitor>;
   varId: string | null;    // standard_name to display; null = show first available
   rainfallMap?: Map<string, { value: number; units: string }>;
   distanceKm?: number;
   onClick: () => void;
 }
 
-export default function StationCard({ station, monitorData, varId, rainfallMap, distanceKm, onClick }: StationCardProps) {
+export default function StationCard({ station, varId, rainfallMap, distanceKm, onClick }: StationCardProps) {
   const { data: measurements } = useLatestMeasurements(station.station_id);
   const { settings } = useAppContext();
-  const statusKey = stationStatusKey(station, monitorData);
+  const statusKey = stationStatusKey(station);
 
   const allReadings = useMemo(() => {
     if (!measurements) return [];
@@ -84,7 +83,7 @@ export default function StationCard({ station, monitorData, varId, rainfallMap, 
           {distanceKm != null && (
             <span className="ml-1.5">
               · {settings.units === 'imperial'
-                ? `${(distanceKm * 0.621371).toFixed(1)} mi`
+                ? `${kmToMiles(distanceKm).toFixed(1)} mi`
                 : `${distanceKm.toFixed(1)} km`}
             </span>
           )}

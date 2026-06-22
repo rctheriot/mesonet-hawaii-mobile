@@ -1,15 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useStations, useStationMonitor } from '../hooks/useStations';
+import { useStations } from '../hooks/useStations';
 import { useLatestMeasurements, useRainfall24hr } from '../hooks/useMeasurements';
 import { useAppContext } from '../context/AppContext';
 import { useChartVars } from '../hooks/useChartVars';
 import { ALLOWED_VARIABLES, convertValue, formatValue, getVariableLabel } from '../utils/units';
 import { isStaleTimestamp, relativeTime } from '../utils/time';
 import { stationStatusKey, STATUS_TEXT, STATUS_LABEL, STATUS_HEX } from '../theme';
-import HistoryChart from '../components/StationPanel/HistoryChart';
-import StationMeta from '../components/StationPanel/StationMeta';
-import ReadingsGrid from '../components/StationPanel/ReadingsGrid';
+import HistoryChart from '../components/StationDetail/HistoryChart';
+import StationMeta from '../components/StationDetail/StationMeta';
+import ReadingsGrid from '../components/StationDetail/ReadingsGrid';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
 import StationLocationMap from '../components/Map/StationLocationMap';
@@ -23,14 +23,14 @@ export default function StationDetail() {
   const [helpOpen, setHelpOpen]         = useState(false);
 
   const { data: stations = [], isLoading: stationsLoading } = useStations();
-  const { data: monitorData = {} } = useStationMonitor();
   const { data: measurements, isLoading: readingsLoading } = useLatestMeasurements(stationId ?? null);
   const { chartVars, selectVar } = useChartVars(stationId, measurements);
 
-  // 24hr rainfall total — only fetched when a rainfall variable is the hero.
+  // 24hr rainfall total — fetched whenever a rainfall variable is shown in the
+  // hero (either slot), so the displayed value matches its "(24hr)" label.
   // ReadingsGrid fetches the same query key, so subsequent grid renders are cache hits.
-  const heroIsRainfall = chartVars[0] ? /^RF/.test(chartVars[0]) : false;
-  const { data: rainfall24hr } = useRainfall24hr(stationId ?? null, heroIsRainfall);
+  const heroHasRainfall = [chartVars[0], chartVars[1]].some(v => v != null && /^RF/.test(v));
+  const { data: rainfall24hr } = useRainfall24hr(stationId ?? null, heroHasRainfall);
 
   const [tab, setTab] = useState<'readings' | 'location' | 'info'>('readings');
 
@@ -67,7 +67,7 @@ export default function StationDetail() {
     return readings.find(m => m.variable === chartVars[1]) ?? null;
   }, [readings, chartVars]);
 
-  const statusKey = station ? stationStatusKey(station, monitorData) : 'unknown';
+  const statusKey = station ? stationStatusKey(station) : 'unknown';
 
   const newestTimestamp = useMemo(() => {
     if (!measurements?.length) return null;
@@ -295,7 +295,7 @@ export default function StationDetail() {
 
         {tab === 'info' && (
           <div className="h-full overflow-y-auto px-4 py-4">
-            <StationMeta station={station} monitorData={monitorData} />
+            <StationMeta station={station} />
           </div>
         )}
       </div>

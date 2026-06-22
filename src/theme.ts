@@ -1,9 +1,9 @@
-import type { Station, StationMonitor } from './types/api';
+import type { Station } from './types/api';
 
 // ─── Status keys ──────────────────────────────────────────────────────────────
 export type StatusKey = 'active' | 'inactive' | 'planned' | 'unknown';
 
-// ─── Hex colors (used for MapLibre markers) ───────────────────────────────────
+// ─── Hex colors (used for Leaflet DivIcon markers) ────────────────────────────
 export const STATUS_HEX: Record<StatusKey, string> = {
   active:   '#22c55e', // green-500
   inactive: '#ef4444', // red-500
@@ -49,12 +49,9 @@ export const STATUS_LABEL: Record<StatusKey, string> = {
 };
 
 // ─── Derive the effective status key for a station ────────────────────────────
-// Status comes from the database only — we do not override based on monitor data.
-// The monitor parameter is retained for call-site compatibility but is not used.
-export function stationStatusKey(
-  station: Station,
-  _monitor?: Record<string, StationMonitor>
-): StatusKey {
+// Status comes straight from the database `status` field — the frontend does not
+// reinterpret it (e.g. by cross-referencing monitor data).
+export function stationStatusKey(station: Station): StatusKey {
   if (station.status === 'active')   return 'active';
   if (station.status === 'inactive') return 'inactive';
   if (station.status === 'planned')  return 'planned';

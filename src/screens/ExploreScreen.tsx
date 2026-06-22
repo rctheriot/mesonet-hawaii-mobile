@@ -6,7 +6,7 @@ import StationList from '../components/StationList/StationList';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
 import VariableInfoModal from '../components/Glossary/VariableInfoModal';
-import { useStations, useStationMonitor } from '../hooks/useStations';
+import { useStations } from '../hooks/useStations';
 import { useMapMeasurements, useMapRainfall24hr } from '../hooks/useMeasurements';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useAppContext } from '../context/AppContext';
@@ -39,7 +39,6 @@ export default function ExploreScreen() {
   const [infoVarId, setInfoVarId]       = useState<string | null>(null);
 
   const { data: stations = [], isLoading, isError } = useStations();
-  const { data: monitorData = {} } = useStationMonitor();
   const { data: varData }      = useMapMeasurements(mapMode !== 'status' && mapMode !== 'RF_1_Tot300s' ? mapMode : null);
   const { data: rainfallData } = useMapRainfall24hr(mapMode === 'RF_1_Tot300s');
   const { data: windDirData }  = useMapMeasurements(mapMode === 'WS_1_Avg' ? 'WDrs_1_Avg' : null);
@@ -183,7 +182,6 @@ export default function ExploreScreen() {
         >
           <StationMap
             stations={stations}
-            monitorData={monitorData}
             selectedStationId={null}
             onSelectStation={(id) => navigate('/station/' + id)}
             flyToCoords={flyTo}
@@ -206,7 +204,6 @@ export default function ExploreScreen() {
           <div className="absolute inset-0">
             <StationList
               stations={stations}
-              monitorData={monitorData}
               onSelectStation={(id) => navigate('/station/' + id)}
               favorites={favorites}
               coords={coords}

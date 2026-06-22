@@ -121,7 +121,8 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'station
                 <section className="space-y-1.5">
                   <h3 className="font-semibold text-slate-800 dark:text-zinc-200">List view</h3>
                   <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                    Filter stations by island or status. Tap <span className="font-medium text-slate-700 dark:text-zinc-300">Near Me</span> to sort by distance from your location.
+                    Filter by island, or tap <span className="font-medium text-slate-700 dark:text-zinc-300">Saved</span> to show only your saved stations.
+                    Use the <span className="font-medium text-slate-700 dark:text-zinc-300">Sort</span> menu to order by name, distance, or value — Distance uses your current location.
                     Your filter and sort settings are remembered when you return from a station page.
                   </p>
                 </section>

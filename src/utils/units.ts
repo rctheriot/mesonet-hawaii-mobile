@@ -142,6 +142,11 @@ export function formatValue(value: number, variableId?: string): string {
   return value.toFixed(1);
 }
 
+// Kilometers → miles, for distance display in imperial mode.
+export function kmToMiles(km: number): number {
+  return km * 0.621371;
+}
+
 // Convert degrees (0–360) to a compass abbreviation.
 export function degreesToCompass(deg: number): string {
   const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];

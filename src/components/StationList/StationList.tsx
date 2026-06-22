@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import type { Station, StationMonitor } from '../../types/api';
+import type { Station } from '../../types/api';
 import { stationStatusKey, STATUS_DOT, STATUS_TEXT, STATUS_LABEL } from '../../theme';
 import { haversineKm } from '../Map/StationMap';
+import { kmToMiles } from '../../utils/units';
 import type { UnitSystem } from '../../utils/units';
 
 const VAR_UNITS: Record<string, { metric: string; imperial: string }> = {
@@ -16,7 +17,6 @@ const VAR_UNITS: Record<string, { metric: string; imperial: string }> = {
 
 interface StationListProps {
   stations: Station[];
-  monitorData: Record<string, StationMonitor>;
   onSelectStation: (stationId: string) => void;
   favorites: Set<string>;
   // Location props for Near Me sort
@@ -36,7 +36,7 @@ interface StationListProps {
 
 type SortBy = 'alpha' | 'nearme' | 'value';
 
-export default function StationList({ stations, monitorData, onSelectStation, favorites, coords, requestLocation, geoLoading, geoError, mapMode, varLabels, units = 'metric', sortBy: sortByProp, onSortByChange, islandFilter: islandFilterProp, onIslandFilterChange }: StationListProps) {
+export default function StationList({ stations, onSelectStation, favorites, coords, requestLocation, geoLoading, geoError, mapMode, varLabels, units = 'metric', sortBy: sortByProp, onSortByChange, islandFilter: islandFilterProp, onIslandFilterChange }: StationListProps) {
   const [islandFilterLocal, setIslandFilterLocal] = useState<string>('all');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sortByLocal, setSortByLocal] = useState<SortBy>('alpha');
@@ -87,11 +87,11 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
     // Default: active first, then alphabetical
     return [...filtered].sort((a, b) => {
       const order: Record<string, number> = { active: 0, inactive: 1, planned: 2, unknown: 3 };
-      const aOrd = order[stationStatusKey(a, monitorData)] ?? 3;
-      const bOrd = order[stationStatusKey(b, monitorData)] ?? 3;
+      const aOrd = order[stationStatusKey(a)] ?? 3;
+      const bOrd = order[stationStatusKey(b)] ?? 3;
       return aOrd !== bOrd ? aOrd - bOrd : (a.full_name ?? a.name ?? '').localeCompare(b.full_name ?? b.name ?? '');
     });
-  }, [filtered, monitorData, sortBy, coords, varLabels]);
+  }, [filtered, sortBy, coords, varLabels]);
 
   return (
     <div className="absolute inset-0 flex flex-col bg-white dark:bg-zinc-950">
@@ -152,14 +152,14 @@ export default function StationList({ stations, monitorData, onSelectStation, fa
           <p className="text-center text-base text-slate-400 dark:text-zinc-500 py-8">No stations match this filter.</p>
         )}
         {sorted.map(station => {
-          const key = stationStatusKey(station, monitorData);
+          const key = stationStatusKey(station);
           const isSaved = favorites.has(station.station_id);
           const distKm = coords && station.lat && station.lng
             ? haversineKm(coords.latitude, coords.longitude, station.lat, station.lng)
             : null;
           const distLabel = distKm != null
             ? units === 'imperial'
-              ? `${(distKm / 1.60934).toFixed(1)} mi`
+              ? `${kmToMiles(distKm).toFixed(1)} mi`
               : `${distKm.toFixed(1)} km`
             : null;
           return (
