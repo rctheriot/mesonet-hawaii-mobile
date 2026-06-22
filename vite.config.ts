@@ -1,9 +1,17 @@
-import { defineConfig } from 'vite';
+/// <reference types="vitest/config" />
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  // Unit tests run in a plain Node environment — current suites cover pure
+  // utility functions only. Add a jsdom environment later when testing components.
+  test: {
+    environment: 'node',
+    globals: false,
+    include: ['src/**/*.test.ts'],
+  },
   plugins: [
     react(),
     tailwindcss(),
