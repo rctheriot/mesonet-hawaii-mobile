@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useAppContext } from '../context/AppContext';
 import type { Measurement } from '../types/api';
 import type { ChartVarPair } from '../types/ui';
@@ -13,12 +13,15 @@ import type { ChartVarPair } from '../types/ui';
 export function useChartVars(
   stationId: string | null | undefined,
   measurements: Measurement[] | undefined,
-): { chartVars: ChartVarPair; selectVar: (varId: string) => void } {
+): { chartVars: ChartVarPair; selectVar: (varId: string) => void; clearVars: () => void; hasBeenCleared: boolean } {
   const { chartVars, setChartVars } = useAppContext();
 
   const lastValidatedRef = useRef<string | null>(null);
   // Which slot to replace next when both are filled. Resets on station switch.
   const replaceSlotRef = useRef<0 | 1>(0);
+  // True only after the user explicitly clicks Clear — distinguishes cleared state
+  // from the brief first-load moment before defaults are applied by the effect.
+  const [hasBeenCleared, setHasBeenCleared] = useState(false);
 
   useEffect(() => {
     if (!stationId || !measurements?.length) return;
@@ -38,6 +41,12 @@ export function useChartVars(
 
     if (v0 !== chartVars[0] || v1 !== chartVars[1]) setChartVars([v0, v1]);
   }, [stationId, measurements]);
+
+  function clearVars() {
+    setChartVars([null, null]);
+    setHasBeenCleared(true);
+    replaceSlotRef.current = 0;
+  }
 
   function selectVar(varId: string) {
     // Deselect — null the slot, don't shift colors.
@@ -74,5 +83,5 @@ export function useChartVars(
     }
   }
 
-  return { chartVars, selectVar };
+  return { chartVars, selectVar, clearVars, hasBeenCleared };
 }

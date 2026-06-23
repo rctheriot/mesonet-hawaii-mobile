@@ -6,6 +6,7 @@ import ExploreScreen from './screens/ExploreScreen';
 import StationDetail from './screens/StationDetail';
 import PWAInstallPrompt from './components/PWAPrompt/PWAInstallPrompt';
 import BottomNav from './components/Nav/BottomNav';
+import LandscapeOverlay from './components/LandscapeOverlay';
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ function AppLayout() {
       </Routes>
       {showNav && <BottomNav />}
       <PWAInstallPrompt />
+      <LandscapeOverlay />
     </>
   );
 }

@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { LuBookmark, LuRadioTower } from 'react-icons/lu';
 import { VARIABLE_GLOSSARY } from '../../data/glossary';
 import { GROUP_ORDER, VARIABLE_GROUP } from '../../utils/units';
 import VariableInfoModal from '../Glossary/VariableInfoModal';
+import pkg from '../../../package.json';
 
 interface HelpModalProps {
   onClose: () => void;
@@ -9,14 +11,13 @@ interface HelpModalProps {
   initialTab?: Tab;
 }
 
-type Tab = 'stations' | 'explore' | 'glossary' | 'install' | 'location';
+export type Tab = 'howto' | 'glossary' | 'setup' | 'about';
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'stations', label: 'My Stations'      },
-  { id: 'explore',  label: 'Station Network'  },
-  { id: 'glossary', label: 'Glossary'         },
-  { id: 'install',  label: 'Install'          },
-  { id: 'location', label: 'Location'         },
+  { id: 'howto',    label: 'How To Use'        },
+  { id: 'glossary', label: 'Glossary'          },
+  { id: 'setup',    label: 'Install & Location' },
+  { id: 'about',    label: 'About'             },
 ];
 
 // Computed at module level so it runs once, not on every render.
@@ -27,7 +28,7 @@ const GLOSSARY_GROUPS = GROUP_ORDER.map(group => ({
   ),
 })).filter(g => g.entries.length > 0);
 
-export default function HelpModal({ onClose, onInstallApp, initialTab = 'stations' }: HelpModalProps) {
+export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' }: HelpModalProps) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [infoVarId, setInfoVarId] = useState<string | null>(null);
 
@@ -52,8 +53,8 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'station
             </button>
           </div>
 
-          {/* Tabs — scrollable so they don't wrap on narrow screens */}
-          <div className="flex overflow-x-auto border-b border-slate-200 dark:border-zinc-700 flex-shrink-0 px-2 scrollbar-none">
+          {/* Tabs */}
+          <div className="tabs-scroll flex overflow-x-auto border-b border-slate-200 dark:border-zinc-700 flex-shrink-0 px-2">
             {TABS.map(t => (
               <button
                 key={t.id}
@@ -72,8 +73,13 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'station
           {/* Tab content */}
           <div className="overflow-y-auto flex-1 px-5 py-5 text-sm space-y-3">
 
-            {tab === 'stations' && (
+            {tab === 'howto' && (
               <>
+                {/* My Stations */}
+                <div className="flex items-center gap-2.5">
+                  <LuBookmark size={20} fill="currentColor" strokeWidth={0} className="text-slate-700 dark:text-zinc-200 flex-shrink-0" />
+                  <h3 className="text-base font-semibold text-slate-800 dark:text-zinc-200">My Stations</h3>
+                </div>
                 <section className="space-y-1.5">
                   <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Your saved stations</h3>
                   <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
@@ -97,11 +103,12 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'station
                     To remove it, open the station and tap <span className="font-medium text-slate-700 dark:text-zinc-300">Saved</span> to toggle it off.
                   </p>
                 </section>
-              </>
-            )}
 
-            {tab === 'explore' && (
-              <>
+                {/* Station Network */}
+                <div className="border-t border-slate-100 dark:border-zinc-800 pt-3 flex items-center gap-2.5">
+                  <LuRadioTower size={20} strokeWidth={1.8} className="text-slate-700 dark:text-zinc-200 flex-shrink-0" />
+                  <h3 className="text-base font-semibold text-slate-800 dark:text-zinc-200">Station Network</h3>
+                </div>
                 <section className="space-y-1.5">
                   <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Browsing all stations</h3>
                   <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
@@ -161,42 +168,86 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'station
               </div>
             )}
 
-            {tab === 'install' && (
-              <section className="space-y-4">
-                <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  Add this app to your home screen for quick, full-screen access — no App Store needed.
-                </p>
-                <button
-                  onClick={onInstallApp}
-                  className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold transition-colors shadow-sm shadow-sky-500/30"
-                >
-                  Add to Home Screen
-                </button>
-                <div className="space-y-2 pt-1">
-                  <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide">Manual steps</p>
-                  <div className="space-y-2 text-slate-500 dark:text-zinc-400 leading-relaxed">
-                    <p>
-                      <span className="font-medium text-slate-700 dark:text-zinc-300">iPhone / iPad:</span> Tap the{' '}
-                      <span className="font-medium text-slate-700 dark:text-zinc-300">Share</span> button in Safari → <span className="font-medium text-slate-700 dark:text-zinc-300">Add to Home Screen</span>.
-                    </p>
-                    <p>
-                      <span className="font-medium text-slate-700 dark:text-zinc-300">Android:</span> Tap the{' '}
-                      <span className="font-medium text-slate-700 dark:text-zinc-300">⋮ menu</span> in Chrome → <span className="font-medium text-slate-700 dark:text-zinc-300">Add to Home Screen</span>.
-                    </p>
+            {tab === 'setup' && (
+              <>
+                {/* Install */}
+                <p className="text-xs font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wide">Install App</p>
+                <section className="space-y-4">
+                  <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
+                    Add this app to your home screen for quick, full-screen access — no App Store needed.
+                  </p>
+                  <button
+                    onClick={onInstallApp}
+                    className="w-full py-3 rounded-xl bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold transition-colors shadow-sm shadow-sky-500/30"
+                  >
+                    Add to Home Screen
+                  </button>
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide">Manual steps</p>
+                    <div className="space-y-2 text-slate-500 dark:text-zinc-400 leading-relaxed">
+                      <p>
+                        <span className="font-medium text-slate-700 dark:text-zinc-300">iPhone / iPad:</span> Tap the{' '}
+                        <span className="font-medium text-slate-700 dark:text-zinc-300">Share</span> button in Safari → <span className="font-medium text-slate-700 dark:text-zinc-300">Add to Home Screen</span>.
+                      </p>
+                      <p>
+                        <span className="font-medium text-slate-700 dark:text-zinc-300">Android:</span> Tap the{' '}
+                        <span className="font-medium text-slate-700 dark:text-zinc-300">⋮ menu</span> in Chrome → <span className="font-medium text-slate-700 dark:text-zinc-300">Add to Home Screen</span>.
+                      </p>
+                    </div>
                   </div>
+                </section>
+
+                {/* Location */}
+                <div className="border-t border-slate-100 dark:border-zinc-800 pt-3">
+                  <p className="text-xs font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-3">Location Access</p>
                 </div>
-              </section>
+                <section className="space-y-1.5">
+                  <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
+                    Used for <span className="font-medium text-slate-700 dark:text-zinc-300">Near Me</span> sorting in the station list. If you previously denied access, re-enable it in your device settings:
+                  </p>
+                  <div className="space-y-1 text-slate-500 dark:text-zinc-400 pt-1">
+                    <p><span className="font-medium text-slate-700 dark:text-zinc-300">iPhone:</span> Settings → Safari → Location → Allow</p>
+                    <p><span className="font-medium text-slate-700 dark:text-zinc-300">Android:</span> Settings → Apps → Chrome → Permissions → Location</p>
+                  </div>
+                </section>
+              </>
             )}
 
-            {tab === 'location' && (
-              <section className="space-y-1.5">
-                <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Location Access</h3>
+            {tab === 'about' && (
+              <section className="space-y-4">
+                <div>
+                  <p className="text-base font-semibold text-slate-900 dark:text-zinc-100">Hawaii Mesonet</p>
+                  <p className="text-xs text-slate-400 dark:text-zinc-500 mt-0.5">Version {pkg.version}</p>
+                </div>
                 <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  Used for <span className="font-medium text-slate-700 dark:text-zinc-300">Near Me</span> sorting in the station list. If you previously denied access, re-enable it in your device settings:
+                  Real-time weather data from the{' '}
+                  <span className="font-medium text-slate-700 dark:text-zinc-300">Hawaii Climate Data Portal (HCDP)</span>{' '}
+                  Mesonet network — a statewide system of weather stations monitoring temperature,
+                  rainfall, wind, humidity, and soil conditions across the Hawaiian Islands.
                 </p>
-                <div className="space-y-1 text-slate-500 dark:text-zinc-400 pt-1">
-                  <p><span className="font-medium text-slate-700 dark:text-zinc-300">iPhone:</span> Settings → Safari → Location → Allow</p>
-                  <p><span className="font-medium text-slate-700 dark:text-zinc-300">Android:</span> Settings → Apps → Chrome → Permissions → Location</p>
+                <div>
+                  <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Contact</p>
+                  <a
+                    href="mailto:rtheriot@hawaii.edu"
+                    className="text-sky-500 dark:text-sky-400 text-sm hover:underline"
+                  >
+                    rtheriot@hawaii.edu
+                  </a>
+                </div>
+                <div className="border-t border-slate-100 dark:border-zinc-800 pt-4">
+                  <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Funding</p>
+                  <p className="text-slate-500 dark:text-zinc-400 text-xs leading-relaxed">
+                    Hawaiʻi EPSCoR is funded by the National Science Foundation under EPSCoR Research
+                    Infrastructure Improvement Award <span className="font-medium text-slate-600 dark:text-zinc-300">#OIA-2149133</span>.{' '}
+                    <a
+                      href="https://hawaii.edu/epscor/change-hi/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sky-500 dark:text-sky-400 hover:underline"
+                    >
+                      hawaii.edu/epscor/change-hi
+                    </a>
+                  </p>
                 </div>
               </section>
             )}
