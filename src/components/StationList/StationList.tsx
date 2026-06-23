@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { LuBookmark } from 'react-icons/lu';
 import type { Station } from '../../types/api';
 import { stationStatusKey, STATUS_DOT, STATUS_TEXT, STATUS_LABEL } from '../../theme';
 import { haversineKm } from '../Map/StationMap';
@@ -46,6 +47,12 @@ export default function StationList({ stations, onSelectStation, favorites, coor
   function setSortBy(v: SortBy) { onSortByChange ? onSortByChange(v) : setSortByLocal(v); }
   function setIslandFilter(v: string) { onIslandFilterChange ? onIslandFilterChange(v) : setIslandFilterLocal(v); }
 
+  // Silently request location on mount so distance shows in subtitles without requiring the user to pick Distance sort.
+  useEffect(() => {
+    if (!coords) requestLocation();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const islands = useMemo(() => {
     const names = new Set<string>();
     stations.forEach(s => { if (s.island) names.add(s.island); });
@@ -69,11 +76,6 @@ export default function StationList({ stations, onSelectStation, favorites, coor
              - haversineKm(coords.latitude, coords.longitude, b.lat, b.lng);
       });
     }
-    if (sortBy === 'alpha') {
-      return [...filtered].sort((a, b) =>
-        (a.full_name ?? a.name ?? '').localeCompare(b.full_name ?? b.name ?? '')
-      );
-    }
     if (sortBy === 'value' && varLabels) {
       return [...filtered].sort((a, b) => {
         const av = parseFloat(varLabels.get(a.station_id) ?? '');
@@ -84,13 +86,10 @@ export default function StationList({ stations, onSelectStation, favorites, coor
         return bv - av;
       });
     }
-    // Default: active first, then alphabetical
-    return [...filtered].sort((a, b) => {
-      const order: Record<string, number> = { active: 0, inactive: 1, planned: 2, unknown: 3 };
-      const aOrd = order[stationStatusKey(a)] ?? 3;
-      const bOrd = order[stationStatusKey(b)] ?? 3;
-      return aOrd !== bOrd ? aOrd - bOrd : (a.full_name ?? a.name ?? '').localeCompare(b.full_name ?? b.name ?? '');
-    });
+    // alpha, nearme-while-waiting-for-coords, and default all use alphabetical
+    return [...filtered].sort((a, b) =>
+      (a.full_name ?? a.name ?? '').localeCompare(b.full_name ?? b.name ?? '')
+    );
   }, [filtered, sortBy, coords, varLabels]);
 
   return (
@@ -108,9 +107,7 @@ export default function StationList({ stations, onSelectStation, favorites, coor
                 : 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-200 dark:hover:bg-zinc-700'
             }`}
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill={favoritesOnly ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={favoritesOnly ? 0 : 2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-            </svg>
+            <LuBookmark size={11} fill={favoritesOnly ? 'currentColor' : 'none'} strokeWidth={favoritesOnly ? 0 : 2} />
             Saved
           </button>
 
@@ -172,9 +169,7 @@ export default function StationList({ stations, onSelectStation, favorites, coor
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 min-w-0">
                   {isSaved && (
-                    <svg className="flex-shrink-0 text-sky-500 dark:text-sky-400" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                    </svg>
+                    <LuBookmark size={11} fill="currentColor" strokeWidth={0} className="flex-shrink-0 text-sky-500 dark:text-sky-400" />
                   )}
                   <span className="text-base font-medium text-slate-900 dark:text-zinc-100 truncate">
                     {station.full_name ?? station.name ?? station.station_id}

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { LuTriangle } from 'react-icons/lu';
 import { useAppContext } from '../context/AppContext';
 import { useLatestMeasurements, useRainfall24hr } from '../hooks/useMeasurements';
 import { ALLOWED_VARIABLES, convertValue, formatValue, mergeWindReadings, kmToMiles } from '../utils/units';
@@ -90,9 +91,7 @@ export default function StationCard({ station, varId, rainfallMap, distanceKm, o
         </p>
         {station.elevation != null && (
           <p className="flex items-center gap-1 text-xs text-slate-400 dark:text-zinc-500 mt-0.5">
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true">
-              <path d="M6 1 L11 10 L1 10 Z" />
-            </svg>
+            <LuTriangle size={11} fill="currentColor" strokeWidth={0} aria-hidden="true" />
             {settings.units === 'imperial'
               ? `${Math.round(station.elevation * 3.28084).toLocaleString()} ft`
               : `${Math.round(station.elevation).toLocaleString()} m`}

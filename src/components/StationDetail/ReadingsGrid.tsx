@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LuInfo } from 'react-icons/lu';
 import { useAppContext } from '../../context/AppContext';
 import { convertValue, formatValue, groupByCategory, mergeWindReadings } from '../../utils/units';
 import Rainfall24hrCard from './Rainfall24hrCard';
@@ -30,11 +31,7 @@ function InfoButton({ varId, onClick }: { varId: string; onClick: (varId: string
       className="absolute top-1.5 right-1.5 text-slate-300 dark:text-zinc-600 hover:text-sky-500 dark:hover:text-sky-400 transition-colors p-0.5"
       aria-label="Variable info"
     >
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <circle cx="8" cy="8" r="7" />
-        <circle cx="8" cy="5.5" r="0.75" fill="currentColor" stroke="none" />
-        <line x1="8" y1="8" x2="8" y2="12" strokeLinecap="round" />
-      </svg>
+      <LuInfo size={14} />
     </button>
   );
 }
