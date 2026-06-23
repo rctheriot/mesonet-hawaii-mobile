@@ -24,7 +24,7 @@ export default function StationDetail() {
 
   const { data: stations = [], isLoading: stationsLoading } = useStations();
   const { data: measurements, isLoading: readingsLoading } = useLatestMeasurements(stationId ?? null);
-  const { chartVars, selectVar } = useChartVars(stationId, measurements);
+  const { chartVars, selectVar, clearVars, hasBeenCleared } = useChartVars(stationId, measurements);
 
   // 24hr rainfall total — fetched whenever a rainfall variable is shown in the
   // hero (either slot), so the displayed value matches its "(24hr)" label.
@@ -49,17 +49,20 @@ export default function StationDetail() {
     return Array.from(seen.values());
   }, [measurements]);
 
-  // Hero reading: show most recently selected variable if active, else prefer air temp.
+  // Hero reading: show the selected variable (slot 0), or auto-default to air temp
+  // on first load. Returns null if the user explicitly cleared (hasBeenCleared=true)
+  // so the empty-state prompt is shown instead.
   const heroReading = useMemo(() => {
     if (readings.length === 0) return null;
     if (chartVars[0]) return readings.find(m => m.variable === chartVars[0]) ?? readings[0];
+    if (hasBeenCleared) return null;
     return (
       readings.find(m =>
         m.variable_display_name?.toLowerCase().includes('air temp') ||
         m.variable?.toLowerCase().includes('tair')
       ) ?? readings[0]
     );
-  }, [readings, chartVars]);
+  }, [readings, chartVars, hasBeenCleared]);
 
   // Second hero reading — shown side-by-side when a second chart var is active.
   const heroReading2 = useMemo(() => {
@@ -229,8 +232,10 @@ export default function StationDetail() {
                 </div>
               );
             })()
-          ) : (
+          ) : readings.length === 0 ? (
             <p className="text-slate-400 dark:text-zinc-600 text-base">No readings available.</p>
+          ) : (
+            <p className="text-slate-400 dark:text-zinc-500 text-sm">Select a reading below to view it here</p>
           )}
         </div>
 
@@ -265,6 +270,7 @@ export default function StationDetail() {
                 stationId={station.station_id}
                 varId={chartVars[0]}
                 varId2={chartVars[1]}
+                onClear={clearVars}
               />
             </div>
             <div>

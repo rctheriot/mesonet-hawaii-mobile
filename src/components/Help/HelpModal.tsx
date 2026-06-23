@@ -53,20 +53,24 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'station
           </div>
 
           {/* Tabs — scrollable so they don't wrap on narrow screens */}
-          <div className="flex overflow-x-auto border-b border-slate-200 dark:border-zinc-700 flex-shrink-0 px-2 scrollbar-none">
-            {TABS.map(t => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`flex-shrink-0 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
-                  tab === t.id
-                    ? 'border-sky-500 text-sky-500 dark:text-sky-400'
-                    : 'border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="relative flex-shrink-0 border-b border-slate-200 dark:border-zinc-700">
+            <div className="tabs-scroll flex overflow-x-auto px-2">
+              {TABS.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`flex-shrink-0 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap ${
+                    tab === t.id
+                      ? 'border-sky-500 text-sky-500 dark:text-sky-400'
+                      : 'border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {/* Fade hint — indicates more tabs are scrollable to the right */}
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white dark:to-zinc-900" />
           </div>
 
           {/* Tab content */}

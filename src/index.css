@@ -67,3 +67,22 @@ html, body, #root {
 .dark .leaflet-control-attribution svg path {
   fill: #38bdf8 !important;
 }
+
+/* Hide scrollbar on horizontally-scrollable tab rows */
+.tabs-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Landscape rotation overlay — hidden in portrait, shown in landscape */
+.landscape-overlay {
+  display: none;
+}
+@media (orientation: landscape) {
+  .landscape-overlay {
+    display: flex;
+  }
+}

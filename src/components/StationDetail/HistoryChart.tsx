@@ -12,6 +12,7 @@ interface HistoryChartProps {
   stationId: string;
   varId: string | null;
   varId2?: string | null;
+  onClear?: () => void;
 }
 
 const RANGES: { label: string; value: TimeRange }[] = [
@@ -204,9 +205,9 @@ function StatsRow({ stats, varId, displayUnit, color, label, range }: {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartProps) {
+export default function HistoryChart({ stationId, varId, varId2, onClear }: HistoryChartProps) {
   const [range, setRange] = useState<TimeRange>('24h');
-  const { settings, setChartVars } = useAppContext();
+  const { settings } = useAppContext();
 
   const { data: data0, isLoading: loading0, isError: error0 } = useHistoricalMeasurements(stationId, varId, range);
   const { data: data1, isLoading: loading1, isError: error1 } = useHistoricalMeasurements(stationId, varId2 ?? null, range);
@@ -437,7 +438,7 @@ export default function HistoryChart({ stationId, varId, varId2 }: HistoryChartP
         ))}
         {(varId || varId2) && (
           <button
-            onClick={() => setChartVars([null, null])}
+            onClick={() => onClear?.()}
             className="ml-auto px-3 py-1 rounded text-xs font-medium text-slate-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
           >
             Clear
