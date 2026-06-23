@@ -77,11 +77,13 @@ html, body, #root {
   display: none;
 }
 
-/* Landscape rotation overlay — hidden in portrait, shown in landscape */
+/* Landscape rotation overlay — shown only on phones held in landscape.
+   Guards (max-height + coarse pointer) keep it off laptops/desktops, whose
+   wide windows also report orientation: landscape. */
 .landscape-overlay {
   display: none;
 }
-@media (orientation: landscape) {
+@media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
   .landscape-overlay {
     display: flex;
   }
