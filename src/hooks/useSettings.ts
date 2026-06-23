@@ -6,7 +6,6 @@ interface Settings {
   homeVarId: string | null;
   units: 'metric' | 'imperial';
   mapMode: string;
-  homeView: 'list' | 'map';
   // Persisted so returning from a station detail page restores the map position.
   mapLat: number;
   mapLng: number;
@@ -24,7 +23,6 @@ const DEFAULTS: Settings = {
   homeVarId: 'RF_1_Tot300s',
   units: 'imperial',
   mapMode: 'RF_1_Tot300s',
-  homeView: 'list',
   mapLat: 20.5,
   mapLng: -157.5,
   mapZoom: 7,

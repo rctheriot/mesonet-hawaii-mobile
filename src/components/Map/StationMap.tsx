@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { LuCrosshair } from 'react-icons/lu';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Station } from '../../types/api';
@@ -14,19 +15,8 @@ const ATTRIBUTION =
   '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> ' +
   '© <a href="https://carto.com/attributions">CARTO</a>';
 
-// ─── Haversine distance ───────────────────────────────────────────────────────
-// Exported for use in ExploreScreen's station list sorting.
-export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+import { haversineKm, stationJitter } from '../../utils/geo';
+export { haversineKm, stationJitter };
 
 // ─── Marker icon helper ───────────────────────────────────────────────────────
 function applyVarIcon(
@@ -48,25 +38,6 @@ function applyVarIcon(
   } else {
     marker.setIcon(stationDivIcon(meta.color, meta.hollow));
   }
-}
-
-// ─── Location obfuscation ─────────────────────────────────────────────────────
-
-// Returns a small deterministic lat/lng offset for a station so its map marker
-// doesn't reveal the precise installation location. The same station_id always
-// produces the same offset (hash-based), so the map is consistent between
-// sessions. Real coordinates are used everywhere else (distance calc, flyTo).
-// ±0.0003° ≈ ±33 m per axis — max diagonal displacement ~45 m (~½ acre).
-export function stationJitter(stationId: string): { dlat: number; dlng: number } {
-  let h = 0;
-  for (let i = 0; i < stationId.length; i++) {
-    h = Math.imul(h, 31) + stationId.charCodeAt(i);
-    h |= 0;
-  }
-  const a = ((h & 0xFFFF) >>> 0) / 0xFFFF;
-  const b = (((h >>> 16) & 0xFFFF) >>> 0) / 0xFFFF;
-  const MAX = 0.0003;
-  return { dlat: (a - 0.5) * 2 * MAX, dlng: (b - 0.5) * 2 * MAX };
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -301,15 +272,7 @@ export default function StationMap({
               className="w-8 h-8 flex items-center justify-center bg-white dark:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-600 disabled:opacity-40 transition-colors"
               aria-label="Center on my location"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
-                   fill="none" stroke="currentColor" strokeWidth="2.2"
-                   strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <line x1="12" y1="2"  x2="12" y2="6"/>
-                <line x1="12" y1="18" x2="12" y2="22"/>
-                <line x1="2"  y1="12" x2="6"  y2="12"/>
-                <line x1="18" y1="12" x2="22" y2="12"/>
-              </svg>
+              <LuCrosshair size={15} strokeWidth={2.2} />
             </button>
           </>
         )}
