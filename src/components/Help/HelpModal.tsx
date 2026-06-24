@@ -252,9 +252,9 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
                   </p>
                 </div>
                 <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                  Real-time weather data from the{' '}
+                  Real-time environmental data from the{' '}
                   <span className="font-medium text-slate-700 dark:text-zinc-300">Hawaii Climate Data Portal (HCDP)</span>{' '}
-                  Mesonet network, a statewide system of weather stations monitoring temperature,
+                  Mesonet network, a statewide system of sensor stations monitoring temperature,
                   rainfall, wind, humidity, and soil conditions across the Hawaiian Islands.
                 </p>
                 <div>
