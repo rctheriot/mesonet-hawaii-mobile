@@ -21,7 +21,7 @@ export default defineConfig({
       manifest: {
         name: 'Hawaii Mesonet',
         short_name: 'Mesonet',
-        description: 'Real-time Hawaii weather station data',
+        description: 'Real-time Hawaii environmental sensor data',
         theme_color: '#0ea5e9',
         background_color: '#0f172a',
         display: 'standalone',
