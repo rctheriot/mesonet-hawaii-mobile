@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LuSettings, LuInfo } from 'react-icons/lu';
+import { LuSettings, LuInfo, LuRadioTower } from 'react-icons/lu';
 import { useQueries } from '@tanstack/react-query';
 import { useAppContext } from '../context/AppContext';
 import HelpModal from '../components/Help/HelpModal';
@@ -272,7 +272,7 @@ export default function HomeScreen() {
           <div className="flex flex-col items-center justify-center h-full px-8 text-center gap-6">
             <div className="space-y-2">
               <p className="text-slate-500 dark:text-zinc-400 text-base leading-relaxed">
-                You haven't added any stations yet.
+                You haven't saved any stations yet.
               </p>
               <p className="text-slate-400 dark:text-zinc-500 text-base leading-relaxed">
                 Tap <strong className="text-slate-600 dark:text-zinc-300">Station Network</strong> to browse the map or station list, then tap <strong className="text-slate-600 dark:text-zinc-300">Save</strong> on any station to add it here.
@@ -280,9 +280,10 @@ export default function HomeScreen() {
             </div>
             <button
               onClick={() => navigate('/explore')}
-              className="px-8 py-4 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white font-semibold text-base transition-colors shadow-lg shadow-sky-500/25"
+              className="flex items-center gap-2 px-8 py-4 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white font-semibold text-base transition-colors shadow-lg shadow-sky-500/25"
             >
-              Explore Stations
+              <LuRadioTower size={20} />
+              Station Network
             </button>
           </div>
         ) : (
