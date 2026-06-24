@@ -31,6 +31,28 @@ const GLOSSARY_GROUPS = GROUP_ORDER.map(group => ({
 export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' }: HelpModalProps) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [infoVarId, setInfoVarId] = useState<string | null>(null);
+  const [updating, setUpdating] = useState(false);
+
+  // Force the installed PWA to pull the newest build. Clearing the service
+  // worker and its caches (Cache Storage) only; localStorage (saved stations
+  // and settings) and cookies are untouched, so nothing the user set is lost.
+  async function forceUpdate() {
+    if (updating) return;
+    setUpdating(true);
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch {
+      // Reload anyway; a normal reload may still pick up a newer build.
+    }
+    window.location.reload();
+  }
 
   return (
     <>
@@ -91,8 +113,8 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
                 <section className="space-y-1.5">
                   <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Variable selector</h3>
                   <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                    Use the selector bar below the top bar to color the map and cards by a specific measurement —
-                    rainfall, temperature, wind speed, and more — so you can compare readings across all your saved stations at a glance.
+                    Use the selector bar below the top bar to color the map and cards by a specific measurement
+                    like rainfall, temperature, or wind speed, so you can compare readings across all your saved stations at a glance.
                   </p>
                 </section>
                 <section className="space-y-1.5">
@@ -120,7 +142,7 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
                 <section className="space-y-1.5">
                   <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Map view</h3>
                   <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                    Use the selector bar to color stations by a measurement — temperature, rainfall, wind speed, and more.
+                    Use the selector bar to color stations by a measurement like temperature, rainfall, or wind speed.
                     Tap the crosshair button to center the map on your current location.
                     The map stays at your last position when you navigate away and come back.
                   </p>
@@ -129,7 +151,7 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
                   <h3 className="font-semibold text-slate-800 dark:text-zinc-200">List view</h3>
                   <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
                     Filter by island, or tap <span className="font-medium text-slate-700 dark:text-zinc-300">Saved</span> to show only your saved stations.
-                    Use the <span className="font-medium text-slate-700 dark:text-zinc-300">Sort</span> menu to order by name, distance, or value — Distance uses your current location.
+                    Use the <span className="font-medium text-slate-700 dark:text-zinc-300">Sort</span> menu to order by name, distance, or value. Distance uses your current location.
                     Your filter and sort settings are remembered when you return from a station page.
                   </p>
                 </section>
@@ -174,7 +196,7 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
                 <p className="text-xs font-semibold text-slate-400 dark:text-zinc-500 uppercase tracking-wide">Install App</p>
                 <section className="space-y-4">
                   <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                    Add this app to your home screen for quick, full-screen access — no App Store needed.
+                    Add this app to your home screen for quick, full-screen access. No App Store needed.
                   </p>
                   <button
                     onClick={onInstallApp}
@@ -218,13 +240,34 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
                 <div>
                   <p className="text-base font-semibold text-slate-900 dark:text-zinc-100">Hawaii Mesonet</p>
                   <p className="text-xs text-slate-400 dark:text-zinc-500 mt-0.5">Version {pkg.version}</p>
+                  <button
+                    onClick={forceUpdate}
+                    disabled={updating}
+                    className="mt-2.5 w-full py-2.5 rounded-xl border border-sky-500 text-sky-600 dark:text-sky-400 text-sm font-semibold hover:bg-sky-50 dark:hover:bg-sky-500/10 disabled:opacity-60 transition-colors"
+                  >
+                    {updating ? 'Updating…' : 'Check for Updates'}
+                  </button>
+                  <p className="text-xs text-slate-400 dark:text-zinc-500 mt-1.5 leading-relaxed">
+                    Reloads the app with the latest version. Your saved stations and settings are kept.
+                  </p>
                 </div>
                 <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
                   Real-time weather data from the{' '}
                   <span className="font-medium text-slate-700 dark:text-zinc-300">Hawaii Climate Data Portal (HCDP)</span>{' '}
-                  Mesonet network — a statewide system of weather stations monitoring temperature,
+                  Mesonet network, a statewide system of weather stations monitoring temperature,
                   rainfall, wind, humidity, and soil conditions across the Hawaiian Islands.
                 </p>
+                <div>
+                  <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Website</p>
+                  <a
+                    href="https://www.hawaii.edu/climate-data-portal/hawaii-mesonet/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sky-500 dark:text-sky-400 text-sm hover:underline"
+                  >
+                    hawaii.edu/climate-data-portal
+                  </a>
+                </div>
                 <div>
                   <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Contact</p>
                   <a

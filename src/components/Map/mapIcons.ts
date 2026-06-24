@@ -3,7 +3,9 @@ import L from 'leaflet';
 // ─── Station circle ───────────────────────────────────────────────────────────
 // Default marker for every station. Color and fill reflect live status.
 
-// arrowDeg: wind direction in degrees (0=N, 90=E…). When set, draws a directional arrow.
+// arrowDeg: wind direction in degrees the wind blows FROM (meteorological standard,
+// 0=N, 90=E…). When set, draws a directional arrow that points DOWNWIND (the way the
+// wind is going), so a 90° "from-east" reading shows an arrow pointing west.
 export function stationDivIcon(color: string, hollow: boolean, label?: string, arrowDeg?: number): L.DivIcon {
   if (!label) {
     // Status / no-data mode — small circle only
@@ -22,10 +24,12 @@ export function stationDivIcon(color: string, hollow: boolean, label?: string, a
   }
 
   // Variable mode — colored pill with white label (+ optional direction arrow for wind)
+  // Arrow art points up (north) at 0°. The reading is the FROM-direction, so add 180°
+  // to point the arrow downwind — the direction the wind is actually blowing toward.
   const inner = arrowDeg != null
     ? `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"
-          style="transform:rotate(${arrowDeg}deg); flex-shrink:0; display:block;">
-        <path d="M6 1 L10.5 10.5 L6 8 L1.5 10.5 Z" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke fill"/>
+          style="transform:rotate(${arrowDeg + 180}deg); flex-shrink:0; display:block;">
+        <path d="M6 1 L10.5 10.5 L6 5 L1.5 10.5 Z" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke fill"/>
       </svg>`
     : '';
 
