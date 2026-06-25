@@ -270,12 +270,23 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
                 </div>
                 <div>
                   <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Contact</p>
+                  <p className="text-slate-600 dark:text-zinc-300 text-sm font-medium">Ryan Theriot</p>
                   <a
                     href="mailto:rtheriot@hawaii.edu"
                     className="text-sky-500 dark:text-sky-400 text-sm hover:underline"
                   >
                     rtheriot@hawaii.edu
                   </a>
+                  <p className="text-slate-500 dark:text-zinc-400 text-sm mt-1">
+                    <a
+                      href="https://lavaflow.info"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sky-500 dark:text-sky-400 hover:underline"
+                    >
+                      Laboratory for Advanced Visualization &amp; Applications
+                    </a>
+                  </p>
                 </div>
                 <div className="border-t border-slate-100 dark:border-zinc-800 pt-4">
                   <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Funding</p>
