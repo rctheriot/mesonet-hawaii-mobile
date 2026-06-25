@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { apiGet } from './client';
 import {
+  fetchLatestMeasurements,
   fetchMapMeasurements,
   fetchMapRainfall24hr,
   fetchLatestMeasurementsBatch,
@@ -11,6 +12,27 @@ const mockApiGet = vi.mocked(apiGet);
 
 beforeEach(() => {
   mockApiGet.mockReset();
+});
+
+describe('fetchLatestMeasurements (single station)', () => {
+  it('intentionally uses limit + join_metadata (so a stale station still shows its last reading)', async () => {
+    mockApiGet.mockResolvedValue({ data: [] });
+    await fetchLatestMeasurements('0115');
+    const params = mockApiGet.mock.calls[0][1] as Record<string, unknown>;
+    expect(params.station_ids).toBe('0115');
+    expect(params.limit).toBe(200);
+    expect(params.join_metadata).toBe(true);
+    // single-station fetch must NOT switch to a date range — that would blank out
+    // the detail page for a station that hasn't reported within the window.
+    expect('start_date' in params).toBe(false);
+  });
+
+  it('returns rows as-is (array and object-keyed responses)', async () => {
+    mockApiGet.mockResolvedValue({ data: [{ station_id: '0115', variable: 'Tair_1_Avg', value: '20', timestamp: 't' }] });
+    expect(await fetchLatestMeasurements('0115')).toHaveLength(1);
+    mockApiGet.mockResolvedValue({ data: { '0': { station_id: '0115', variable: 'Tair_1_Avg', value: '20', timestamp: 't' } } });
+    expect(await fetchLatestMeasurements('0115')).toHaveLength(1);
+  });
 });
 
 describe('fetchMapMeasurements', () => {
@@ -50,13 +72,14 @@ describe('fetchMapMeasurements', () => {
     expect(map.get('A')).toBe(7);
   });
 
-  it('omits join_metadata to keep the payload small', async () => {
+  it('uses a date range and omits join_metadata to keep the payload small', async () => {
     mockApiGet.mockResolvedValue({ data: [] });
     await fetchMapMeasurements('Tair_1_Avg');
     const params = mockApiGet.mock.calls[0][1] as Record<string, unknown>;
     expect(params.var_ids).toBe('Tair_1_Avg');
-    expect(params.limit).toBe(2000);
     expect('join_metadata' in params).toBe(false);
+    expect(typeof params.start_date).toBe('string');
+    expect(typeof params.end_date).toBe('string');
   });
 });
 
@@ -115,12 +138,14 @@ describe('fetchLatestMeasurementsBatch', () => {
     expect(b[0].value).toBe('2');
   });
 
-  it('requests join_metadata (StationCard needs units + display names)', async () => {
+  it('queries a date range without join_metadata (units come from /variables)', async () => {
     mockApiGet.mockResolvedValue({ data: [] });
     await fetchLatestMeasurementsBatch(['A', 'B'], ['Tair_1_Avg']);
     const params = mockApiGet.mock.calls[0][1] as Record<string, unknown>;
     expect(params.station_ids).toBe('A,B');
     expect(params.var_ids).toBe('Tair_1_Avg');
-    expect(params.join_metadata).toBe(true);
+    expect('join_metadata' in params).toBe(false);
+    expect(typeof params.start_date).toBe('string');
+    expect(typeof params.end_date).toBe('string');
   });
 });

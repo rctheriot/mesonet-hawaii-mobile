@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchLatestMeasurements, fetchLatestMeasurementsBatch, fetchHistoricalMeasurements, fetchMapMeasurements, fetchMapRainfall24hr } from '../api/measurements';
 import { useVariables } from './useVariables';
-import type { TimeRange } from '../types/api';
+import type { Measurement, TimeRange } from '../types/api';
 
 export function useLatestMeasurements(stationId: string | null) {
   return useQuery({
@@ -18,12 +18,30 @@ export function useLatestMeasurements(stationId: string | null) {
 // One request replaces N per-station fetches. Returns Map<station_id, Measurement[]>.
 // The query key includes the sorted station + variable lists so it re-fetches when
 // the favorites or the displayed variable change.
+//
+// The fetch omits join_metadata; units are attached here from the cached /variables
+// metadata via `select` (keyed by variable id) so consumers still see m.units.
 export function useLatestVarBatch(stationIds: string[], varIds: string[]) {
   const stationKey = [...stationIds].sort().join(',');
   const varKey = [...varIds].sort().join(',');
+  const { data: variables } = useVariables();
+  const select = useCallback(
+    (byStation: Map<string, Measurement[]>) => {
+      const out = new Map<string, Measurement[]>();
+      for (const [id, rows] of byStation) {
+        out.set(id, rows.map(m => ({
+          ...m,
+          units: m.units ?? variables?.get(m.variable)?.units ?? '',
+        })));
+      }
+      return out;
+    },
+    [variables],
+  );
   return useQuery({
     queryKey: ['measurements', 'latestBatch', stationKey, varKey],
     queryFn: () => fetchLatestMeasurementsBatch(stationIds, varIds),
+    select,
     enabled: stationIds.length > 0 && varIds.length > 0,
     staleTime: 1000 * 60 * 2,
     refetchInterval: 1000 * 60 * 5,

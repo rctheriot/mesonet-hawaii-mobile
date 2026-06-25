@@ -20,11 +20,15 @@ export async function fetchLatestMeasurements(stationId: string): Promise<Measur
 // Replaces N per-station calls with ONE request, then dedupes to the most recent
 // row per (station, variable). Returns Map<station_id, Measurement[]>.
 //
-// NOTE: scoping to specific var_ids is essential. The API sorts all rows by
-// timestamp descending and applies a single shared limit, so an unscoped
-// (all-variable) batch starves stations whose latest reading is less recent —
-// they fall past the cutoff and return zero rows. Restricting to the handful of
-// variables actually shown keeps every station's latest within the limit.
+// Uses a 24h date range rather than a row limit. A shared `limit` is split across
+// the requested stations, so with only a handful of stations each one pulls many
+// hours of useless history (and a too-small limit would instead starve stations
+// whose latest reading is older). A date range fetches just the recent window for
+// every station regardless of count — far smaller and starvation-free. 24h matches
+// the app's staleness threshold, so no non-stale station is dropped.
+//
+// join_metadata is omitted to keep the payload small (it ~4x's it); units are
+// attached from the cached /variables metadata by useLatestVarBatch.
 export async function fetchLatestMeasurementsBatch(
   stationIds: string[],
   varIds: string[],
@@ -32,15 +36,18 @@ export async function fetchLatestMeasurementsBatch(
   const result = new Map<string, Measurement[]>();
   if (stationIds.length === 0 || varIds.length === 0) return result;
 
+  const now = new Date();
+  const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const { data } = await apiGet<Measurement[] | Record<string, Measurement>>(
     '/mesonet/db/measurements',
     {
       station_ids: stationIds.join(','),
       var_ids: varIds.join(','),
-      limit: 2000,
-      join_metadata: true,
+      start_date: start.toISOString(),
+      end_date: now.toISOString(),
       local_tz: true,
       location: 'hawaii',
+      limit: 50000, // safety cap only; the date range is the real bound
     }
   );
   const rows = Array.isArray(data) ? data : Object.values(data);
@@ -68,13 +75,23 @@ export async function fetchLatestMeasurementsBatch(
 // endpoint by the caller, so join_metadata is intentionally omitted here — it
 // would ~4x the payload by repeating identical station/variable metadata on every
 // row (see fetchVariables).
+//
+// Uses a 2h date range rather than a row limit: a shared limit can drop stations
+// by global timestamp ordering (more-frequent reporters crowd out others), while
+// a 2h window returns every station that reported recently — verified to cover the
+// same station count as the old limit:2000, at a smaller payload. Stations silent
+// for >2h have no "current" reading and correctly fall off the live map.
 export async function fetchMapMeasurements(varId: string): Promise<Map<string, number>> {
+  const now = new Date();
+  const start = new Date(now.getTime() - 2 * 60 * 60 * 1000);
   const { data } = await apiGet<Measurement[] | Record<string, Measurement>>(
     '/mesonet/db/measurements',
     {
       var_ids: varId,
-      limit: 2000,
+      start_date: start.toISOString(),
+      end_date: now.toISOString(),
       location: 'hawaii',
+      limit: 50000, // safety cap only; the date range is the real bound
     }
   );
   const raw = Array.isArray(data) ? data : Object.values(data);
