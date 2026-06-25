@@ -1,6 +1,8 @@
+import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchLatestMeasurements, fetchHistoricalMeasurements, fetchMapMeasurements, fetchMapRainfall24hr } from '../api/measurements';
-import type { TimeRange } from '../types/api';
+import { fetchLatestMeasurements, fetchLatestMeasurementsBatch, fetchHistoricalMeasurements, fetchMapMeasurements, fetchMapRainfall24hr } from '../api/measurements';
+import { useVariables } from './useVariables';
+import type { Measurement, TimeRange } from '../types/api';
 
 export function useLatestMeasurements(stationId: string | null) {
   return useQuery({
@@ -9,6 +11,40 @@ export function useLatestMeasurements(stationId: string | null) {
     enabled: !!stationId,
     staleTime: 1000 * 60 * 2,          // treat cached data as fresh for 2 min
     refetchInterval: 1000 * 60 * 5,    // background re-fetch every 5 min while panel is open
+  });
+}
+
+// Batched latest readings for a set of stations limited to the given variables.
+// One request replaces N per-station fetches. Returns Map<station_id, Measurement[]>.
+// The query key includes the sorted station + variable lists so it re-fetches when
+// the favorites or the displayed variable change.
+//
+// The fetch omits join_metadata; units are attached here from the cached /variables
+// metadata via `select` (keyed by variable id) so consumers still see m.units.
+export function useLatestVarBatch(stationIds: string[], varIds: string[]) {
+  const stationKey = [...stationIds].sort().join(',');
+  const varKey = [...varIds].sort().join(',');
+  const { data: variables } = useVariables();
+  const select = useCallback(
+    (byStation: Map<string, Measurement[]>) => {
+      const out = new Map<string, Measurement[]>();
+      for (const [id, rows] of byStation) {
+        out.set(id, rows.map(m => ({
+          ...m,
+          units: m.units ?? variables?.get(m.variable)?.units ?? '',
+        })));
+      }
+      return out;
+    },
+    [variables],
+  );
+  return useQuery({
+    queryKey: ['measurements', 'latestBatch', stationKey, varKey],
+    queryFn: () => fetchLatestMeasurementsBatch(stationIds, varIds),
+    select,
+    enabled: stationIds.length > 0 && varIds.length > 0,
+    staleTime: 1000 * 60 * 2,
+    refetchInterval: 1000 * 60 * 5,
   });
 }
 
@@ -32,18 +68,24 @@ export function useRainfall24hr(stationId: string | null, enabled = true) {
 
 // Returns a Map<station_id, { value, units }> for the given variable across all stations.
 // Only enabled when varId is non-null so callers can conditionally fetch.
+// Units are attached from the cached /variables metadata via `select` (the fetch
+// itself omits join_metadata to keep the payload small). select runs again, with
+// the same cached data, once variables load — no extra measurement request.
 export function useMapMeasurements(varId: string | null) {
-  return useQuery({
-    queryKey: ['measurements', 'map', varId],
-    queryFn: async () => {
-      const rows = await fetchMapMeasurements(varId!);
+  const { data: variables } = useVariables();
+  const units = (varId && variables?.get(varId)?.units) || '';
+  const select = useCallback(
+    (values: Map<string, number>) => {
       const map = new Map<string, { value: number; units: string }>();
-      for (const m of rows) {
-        const v = Number(m.value);
-        if (!Number.isNaN(v)) map.set(m.station_id, { value: v, units: m.units ?? '' });
-      }
+      for (const [id, value] of values) map.set(id, { value, units });
       return map;
     },
+    [units],
+  );
+  return useQuery({
+    queryKey: ['measurements', 'map', varId],
+    queryFn: () => fetchMapMeasurements(varId!),
+    select,
     enabled: !!varId,
     staleTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 10,
@@ -52,23 +94,20 @@ export function useMapMeasurements(varId: string | null) {
 
 // Sums 24hr of RF_1_Tot300s per station across all Hawaii stations.
 export function useMapRainfall24hr(enabled: boolean) {
-  return useQuery({
-    queryKey: ['measurements', 'map', 'rainfall24hr'],
-    queryFn: async () => {
-      const rows = await fetchMapRainfall24hr();
-      const sums = new Map<string, number>();
-      let units = 'mm';
-      for (const m of rows) {
-        if (m.value == null) continue;
-        const v = Number(m.value);
-        if (Number.isNaN(v)) continue;
-        sums.set(m.station_id, (sums.get(m.station_id) ?? 0) + v);
-        if (m.units) units = m.units;
-      }
+  const { data: variables } = useVariables();
+  const units = variables?.get('RF_1_Tot300s')?.units || 'mm';
+  const select = useCallback(
+    (sums: Map<string, number>) => {
       const result = new Map<string, { value: number; units: string }>();
       for (const [id, total] of sums) result.set(id, { value: total, units });
       return result;
     },
+    [units],
+  );
+  return useQuery({
+    queryKey: ['measurements', 'map', 'rainfall24hr'],
+    queryFn: fetchMapRainfall24hr,
+    select,
     enabled,
     staleTime: 1000 * 60 * 10,
     refetchInterval: 1000 * 60 * 15,

@@ -57,9 +57,14 @@ A mobile-first PWA for browsing real-time Hawaii weather station data from the H
 - **Key endpoints:**
   - `GET /mesonet/db/stations?location=hawaii&limit=1000` — all stations
   - `GET /mesonet/db/measurements?station_ids=&limit=50&join_metadata=true&local_tz=true&location=hawaii` — latest readings
-  - `GET /mesonet/db/variables?location=hawaii&limit=1000` — variable metadata (standard_name, display_name, units). Not currently fetched by the app.
+  - `GET /mesonet/db/variables?location=hawaii&limit=1000` — variable metadata (standard_name, display_name, units). Fetched once and cached for the session via `useVariables`/`fetchVariables`; supplies units to the bulk map queries so they can omit `join_metadata`.
   - The `stationMonitor` endpoint was previously used to derive status but is no longer called — status now comes straight from the `stations` payload (see Status System).
 - **Field names:** stations use `lat`/`lng` (not latitude/longitude). Measurements use `variable` (not `var_id`), `variable_display_name`, `value` (may be string, cast with `Number()`).
+- **Measurement-fetching strategy (perf):**
+  - Bulk map queries (`fetchMapMeasurements`, `fetchMapRainfall24hr`) **omit `join_metadata`** — it repeats identical station/variable metadata on every row (~4x payload; ~8MB→2.25MB for rainfall). Units come from the cached `/variables` endpoint, attached in the hook via `select`.
+  - All multi-station measurement queries use **date ranges, not row limits** (`limit` is kept only as a high safety cap). `fetchMapMeasurements` uses a 2h window (covers every recently-reporting station at a smaller payload than the old `limit:2000`, with no global-ordering starvation); `fetchMapRainfall24hr` and the favorites batch use 24h. Single-station `fetchLatestMeasurements` deliberately keeps `limit` so a stale station's detail page still shows its last reading regardless of age.
+  - HomeScreen favorites use **one batched request** (`fetchLatestMeasurementsBatch` / `useLatestVarBatch`) for the displayed variable (+ `WDrs_1_Avg` for Wind), not a per-station fan-out. It also **omits `join_metadata`** — units are attached from the cached `/variables` metadata in the hook via `select`. (`StationCard` only needs `units` from the join; `variable_display_name` is used solely in the `varId === null` auto-select path, which HomeScreen never hits, and wind merging keys off the variable id.)
+  - The batch uses a **24h date range, not a row `limit`**. A shared limit is split across the requested stations, so with few favorites each pulls many hours of useless history (and a small limit would instead starve stations whose latest reading is older). A date range fetches only the recent window per station regardless of count; 24h matches the staleness threshold so no non-stale favorite is dropped.
 - **Sensor-number normalization:** `VariableInfoModal` strips sensor numbers (`_2_`/`_3_` → `_1_`) as a fallback so sensors 2–4 still resolve a glossary entry when their exact ID isn't defined.
 
 ## Status System
