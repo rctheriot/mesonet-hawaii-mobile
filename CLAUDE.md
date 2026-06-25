@@ -57,9 +57,13 @@ A mobile-first PWA for browsing real-time Hawaii weather station data from the H
 - **Key endpoints:**
   - `GET /mesonet/db/stations?location=hawaii&limit=1000` — all stations
   - `GET /mesonet/db/measurements?station_ids=&limit=50&join_metadata=true&local_tz=true&location=hawaii` — latest readings
-  - `GET /mesonet/db/variables?location=hawaii&limit=1000` — variable metadata (standard_name, display_name, units). Not currently fetched by the app.
+  - `GET /mesonet/db/variables?location=hawaii&limit=1000` — variable metadata (standard_name, display_name, units). Fetched once and cached for the session via `useVariables`/`fetchVariables`; supplies units to the bulk map queries so they can omit `join_metadata`.
   - The `stationMonitor` endpoint was previously used to derive status but is no longer called — status now comes straight from the `stations` payload (see Status System).
 - **Field names:** stations use `lat`/`lng` (not latitude/longitude). Measurements use `variable` (not `var_id`), `variable_display_name`, `value` (may be string, cast with `Number()`).
+- **Measurement-fetching strategy (perf):**
+  - Bulk map queries (`fetchMapMeasurements`, `fetchMapRainfall24hr`) **omit `join_metadata`** — it repeats identical station/variable metadata on every row (~4x payload; ~8MB→2.25MB for rainfall). Units come from the cached `/variables` endpoint, attached in the hook via `select`.
+  - HomeScreen favorites use **one batched request** (`fetchLatestMeasurementsBatch` / `useLatestVarBatch`) for the displayed variable (+ `WDrs_1_Avg` for Wind), not a per-station fan-out. The batch **keeps `join_metadata`** (small, scoped) because `StationCard` needs units + display names.
+  - Batches must scope `var_ids`: the API sorts all rows by timestamp desc under a single shared `limit`, so an unscoped all-variable batch starves stations whose latest reading is less recent (they fall past the cutoff and return zero rows).
 - **Sensor-number normalization:** `VariableInfoModal` strips sensor numbers (`_2_`/`_3_` → `_1_`) as a fallback so sensors 2–4 still resolve a glossary entry when their exact ID isn't defined.
 
 ## Status System
