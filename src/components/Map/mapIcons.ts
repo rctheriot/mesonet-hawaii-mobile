@@ -29,7 +29,7 @@ export function stationDivIcon(color: string, hollow: boolean, label?: string, a
   const inner = arrowDeg != null
     ? `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"
           style="transform:rotate(${arrowDeg + 180}deg); flex-shrink:0; display:block;">
-        <path d="M6 1 L10.5 10.5 L6 5 L1.5 10.5 Z" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke fill"/>
+        <path d="M6 1 L10.5 10.5 L6 7 L1.5 10.5 Z" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round" paint-order="stroke fill"/>
       </svg>`
     : '';
 
