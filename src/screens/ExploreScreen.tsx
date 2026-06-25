@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LuSettings, LuInfo } from 'react-icons/lu';
 import StationMap from '../components/Map/StationMap';
 import MapLegend, { type MapMode } from '../components/Map/MapLegend';
+import MapLoadingBadge from '../components/Map/MapLoadingBadge';
 import StationList from '../components/StationList/StationList';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
@@ -40,12 +41,16 @@ export default function ExploreScreen() {
   const [infoVarId, setInfoVarId]       = useState<string | null>(null);
 
   const { data: stations = [], isLoading, isError } = useStations();
-  const { data: varData }      = useMapMeasurements(mapMode !== 'status' && mapMode !== 'RF_1_Tot300s' ? mapMode : null);
-  const { data: rainfallData } = useMapRainfall24hr(mapMode === 'RF_1_Tot300s');
+  const { data: varData, isFetching: varFetching }      = useMapMeasurements(mapMode !== 'status' && mapMode !== 'RF_1_Tot300s' ? mapMode : null);
+  const { data: rainfallData, isFetching: rainFetching } = useMapRainfall24hr(mapMode === 'RF_1_Tot300s');
   const { data: windDirData }  = useMapMeasurements(mapMode === 'WS_1_Avg' ? 'WDrs_1_Avg' : null);
   const { coords, loading: geoLoading, error: geoError, requestLocation } = useGeolocation();
 
   const activeVarData = mapMode === 'RF_1_Tot300s' ? rainfallData : varData;
+  // Show a loading badge while variable data is first downloading (not on silent
+  // background refetches, when colors are already on the map).
+  const dataLoading = mapMode !== 'status' && !activeVarData &&
+    (mapMode === 'RF_1_Tot300s' ? rainFetching : varFetching);
 
   const varColors = useMemo(() => {
     if (!activeVarData || mapMode === 'status') return undefined;
@@ -191,6 +196,7 @@ export default function ExploreScreen() {
             varLabels={varLabels}
             varArrows={varArrows}
           />
+          {dataLoading && <MapLoadingBadge />}
           <MapLegend mode={mapMode} units={settings.units} />
         </div>
 

@@ -1,20 +1,19 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LuSettings, LuInfo, LuRadioTower } from 'react-icons/lu';
-import { useQueries } from '@tanstack/react-query';
 import { useAppContext } from '../context/AppContext';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
 import StationCard from '../components/StationCard';
 import StationMap, { haversineKm } from '../components/Map/StationMap';
 import MapLegend, { type MapMode } from '../components/Map/MapLegend';
+import MapLoadingBadge from '../components/Map/MapLoadingBadge';
 import VariableInfoModal from '../components/Glossary/VariableInfoModal';
 import { convertValue } from '../utils/units';
 import { tempToHex, windToHex, rhToHex, rainToHex, smToHex, swToHex } from '../utils/mapColor';
 import { useStations } from '../hooks/useStations';
-import { useMapRainfall24hr } from '../hooks/useMeasurements';
+import { useMapRainfall24hr, useLatestVarBatch } from '../hooks/useMeasurements';
 import { useGeolocation } from '../hooks/useGeolocation';
-import { fetchLatestMeasurements, fetchHistoricalMeasurements } from '../api/measurements';
 import type { Station } from '../types/api';
 
 const HOME_VAR_OPTIONS = [
@@ -36,7 +35,7 @@ export default function HomeScreen() {
 
   const { data: stations = [] } = useStations();
   const { coords, loading: geoLoading, requestLocation } = useGeolocation();
-  const { data: rainfallMap } = useMapRainfall24hr(homeVarId === 'RF_1_Tot300s');
+  const { data: rainfallMap, isFetching: rainfallFetching } = useMapRainfall24hr(homeVarId === 'RF_1_Tot300s');
 
   const myStations = useMemo(() => {
     return Array.from(favorites)
@@ -45,48 +44,29 @@ export default function HomeScreen() {
   }, [favorites, stations]);
 
 
-  // Per-station queries share the same React Query cache keys as StationCard, so no
-  // extra network requests are made when the list was shown first.
-  const latestQueries = useQueries({
-    queries: homeVarId && homeVarId !== 'RF_1_Tot300s'
-      ? myStations.map(s => ({
-          queryKey: ['measurements', 'latest', s.station_id] as const,
-          queryFn: () => fetchLatestMeasurements(s.station_id),
-          staleTime: 1000 * 60 * 2,
-          refetchInterval: 1000 * 60 * 5,
-        }))
-      : [],
-  });
-
-  const rainfallQueries = useQueries({
-    queries: homeVarId === 'RF_1_Tot300s'
-      ? myStations.map(s => ({
-          queryKey: ['measurements', 'rainfall24hr', s.station_id] as const,
-          queryFn: async () => {
-            const data = await fetchHistoricalMeasurements(s.station_id, 'RF_1_Tot300s', '24h');
-            const valid = data.filter(m => m.value != null);
-            return {
-              total: valid.reduce((sum, m) => sum + Number(m.value), 0),
-              units: valid[0]?.units ?? 'mm',
-            };
-          },
-          staleTime: 1000 * 60 * 5,
-        }))
-      : [],
-  });
+  // One batched request for the displayed variable (+ wind direction when Wind is
+  // selected) across all favorites — replaces the old per-station fan-out.
+  // Rainfall keeps its own 24h-sum path below.
+  const stationIds = useMemo(() => myStations.map(s => s.station_id), [myStations]);
+  const batchVarIds = useMemo(() => {
+    if (!homeVarId || homeVarId === 'RF_1_Tot300s') return [];
+    return homeVarId === 'WS_1_Avg' ? [homeVarId, 'WDrs_1_Avg'] : [homeVarId];
+  }, [homeVarId]);
+  const { data: latestBatch, isFetching: latestFetching } = useLatestVarBatch(stationIds, batchVarIds);
+  const readingFor = (stationId: string, variable: string | null) =>
+    variable ? latestBatch?.get(stationId)?.find(r => r.variable === variable) ?? null : null;
 
   const varColors = useMemo(() => {
     if (!homeVarId) return undefined;
     const map = new Map<string, string>();
     if (homeVarId === 'RF_1_Tot300s') {
-      myStations.forEach((s, i) => {
-        const result = rainfallQueries[i]?.data;
-        if (result) map.set(s.station_id, rainToHex(result.total));
+      myStations.forEach((s) => {
+        const entry = rainfallMap?.get(s.station_id);
+        if (entry) map.set(s.station_id, rainToHex(entry.value));
       });
     } else {
-      myStations.forEach((s, i) => {
-        const rows = latestQueries[i]?.data;
-        const m = rows?.find(r => r.variable === homeVarId);
+      myStations.forEach((s) => {
+        const m = readingFor(s.station_id, homeVarId);
         if (!m || m.value == null) return;
         const value = Number(m.value);
         if (isNaN(value)) return;
@@ -102,40 +82,44 @@ export default function HomeScreen() {
       });
     }
     return map;
-  }, [latestQueries, rainfallQueries, homeVarId, myStations]);
+  }, [latestBatch, rainfallMap, homeVarId, myStations]);
 
   const varArrows = useMemo(() => {
     if (homeVarId !== 'WS_1_Avg') return undefined;
     const map = new Map<string, number>();
-    myStations.forEach((s, i) => {
-      const rows = latestQueries[i]?.data;
-      const m = rows?.find(r => r.variable === 'WDrs_1_Avg');
+    myStations.forEach((s) => {
+      const m = readingFor(s.station_id, 'WDrs_1_Avg');
       if (m?.value != null) map.set(s.station_id, Number(m.value));
     });
     return map;
-  }, [latestQueries, homeVarId, myStations]);
+  }, [latestBatch, homeVarId, myStations]);
 
   const varLabels = useMemo(() => {
     if (!homeVarId) return undefined;
     const map = new Map<string, string>();
     if (homeVarId === 'RF_1_Tot300s') {
-      myStations.forEach((s, i) => {
-        const result = rainfallQueries[i]?.data;
-        if (!result) return;
-        const { value: converted } = convertValue(result.total, result.units, settings.units, homeVarId);
+      myStations.forEach((s) => {
+        const entry = rainfallMap?.get(s.station_id);
+        if (!entry) return;
+        const { value: converted } = convertValue(entry.value, entry.units, settings.units, homeVarId);
         map.set(s.station_id, converted.toFixed(settings.units === 'imperial' ? 2 : 1));
       });
     } else {
-      myStations.forEach((s, i) => {
-        const rows = latestQueries[i]?.data;
-        const m = rows?.find(r => r.variable === homeVarId);
+      myStations.forEach((s) => {
+        const m = readingFor(s.station_id, homeVarId);
         if (!m || m.value == null) return;
         const { value: converted } = convertValue(Number(m.value), m.units ?? '', settings.units, homeVarId);
         map.set(s.station_id, String(Math.round(converted)));
       });
     }
     return map;
-  }, [latestQueries, rainfallQueries, homeVarId, myStations, settings.units]);
+  }, [latestBatch, rainfallMap, homeVarId, myStations, settings.units]);
+
+  // Loading badge for the map while readings first download — avoids the brief
+  // fall-back to status colors looking like a broken app.
+  const dataLoading = homeVarId === 'RF_1_Tot300s'
+    ? rainfallFetching && !rainfallMap
+    : latestFetching && !latestBatch;
 
   const distanceMap = useMemo(() => {
     if (!coords) return new Map<string, number>();
@@ -148,19 +132,18 @@ export default function HomeScreen() {
   const valueMap = useMemo(() => {
     const map = new Map<string, number>();
     if (homeVarId === 'RF_1_Tot300s') {
-      rainfallQueries.forEach((q, i) => {
-        const s = myStations[i];
-        if (s && q.data != null) map.set(s.station_id, q.data.total);
+      myStations.forEach((s) => {
+        const entry = rainfallMap?.get(s.station_id);
+        if (entry) map.set(s.station_id, entry.value);
       });
     } else {
-      latestQueries.forEach((q, i) => {
-        const s = myStations[i];
-        const m = q.data?.find(r => r.variable === homeVarId);
-        if (s && m?.value != null) map.set(s.station_id, Number(m.value));
+      myStations.forEach((s) => {
+        const m = readingFor(s.station_id, homeVarId);
+        if (m?.value != null) map.set(s.station_id, Number(m.value));
       });
     }
     return map;
-  }, [latestQueries, rainfallQueries, homeVarId, myStations]);
+  }, [latestBatch, rainfallMap, homeVarId, myStations]);
 
   // Distance sort falls back to insertion order when location hasn't been granted yet.
   const sortedStations = useMemo(() => {
@@ -309,6 +292,7 @@ export default function HomeScreen() {
                 varLabels={varLabels}
                 varArrows={varArrows}
               />
+              {dataLoading && <MapLoadingBadge />}
               {homeVarId && KNOWN_MAP_MODES.has(homeVarId) && (
                 <MapLegend mode={homeVarId as MapMode} units={settings.units} />
               )}
@@ -339,6 +323,7 @@ export default function HomeScreen() {
                       key={station.station_id}
                       station={station}
                       varId={homeVarId}
+                      measurements={latestBatch?.get(station.station_id) ?? []}
                       rainfallMap={rainfallMap}
                       distanceKm={distanceMap.get(station.station_id)}
                       onClick={() => navigate(`/station/${station.station_id}`)}

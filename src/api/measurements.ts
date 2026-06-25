@@ -16,6 +16,53 @@ export async function fetchLatestMeasurements(stationId: string): Promise<Measur
   return Object.values(data);
 }
 
+// Batched latest readings for a set of stations, limited to the given variables.
+// Replaces N per-station calls with ONE request, then dedupes to the most recent
+// row per (station, variable). Returns Map<station_id, Measurement[]>.
+//
+// NOTE: scoping to specific var_ids is essential. The API sorts all rows by
+// timestamp descending and applies a single shared limit, so an unscoped
+// (all-variable) batch starves stations whose latest reading is less recent —
+// they fall past the cutoff and return zero rows. Restricting to the handful of
+// variables actually shown keeps every station's latest within the limit.
+export async function fetchLatestMeasurementsBatch(
+  stationIds: string[],
+  varIds: string[],
+): Promise<Map<string, Measurement[]>> {
+  const result = new Map<string, Measurement[]>();
+  if (stationIds.length === 0 || varIds.length === 0) return result;
+
+  const { data } = await apiGet<Measurement[] | Record<string, Measurement>>(
+    '/mesonet/db/measurements',
+    {
+      station_ids: stationIds.join(','),
+      var_ids: varIds.join(','),
+      limit: 2000,
+      join_metadata: true,
+      local_tz: true,
+      location: 'hawaii',
+    }
+  );
+  const rows = Array.isArray(data) ? data : Object.values(data);
+
+  // Keep only the most recent row per (station, variable).
+  const latest = new Map<string, Measurement>();
+  for (const m of rows) {
+    if (!m.station_id || m.value == null) continue;
+    const key = `${m.station_id}|${m.variable}`;
+    const existing = latest.get(key);
+    if (!existing || new Date(m.timestamp) > new Date(existing.timestamp)) {
+      latest.set(key, m);
+    }
+  }
+  for (const m of latest.values()) {
+    const arr = result.get(m.station_id);
+    if (arr) arr.push(m);
+    else result.set(m.station_id, [m]);
+  }
+  return result;
+}
+
 // Fetches the latest measurement for a single variable across all Hawaii stations.
 // Returns at most one entry per station (the most recent).
 export async function fetchMapMeasurements(varId: string): Promise<Measurement[]> {

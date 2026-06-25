@@ -5,18 +5,26 @@ import { useLatestMeasurements, useRainfall24hr } from '../hooks/useMeasurements
 import { ALLOWED_VARIABLES, convertValue, formatValue, mergeWindReadings, kmToMiles } from '../utils/units';
 import { relativeTime } from '../utils/time';
 import { stationStatusKey, STATUS_DOT } from '../theme';
-import type { Station } from '../types/api';
+import type { Station, Measurement } from '../types/api';
 
 interface StationCardProps {
   station: Station;
   varId: string | null;    // standard_name to display; null = show first available
+  // Pre-fetched latest readings (from a batched query). When provided, the card
+  // skips its own per-station fetch — this is how HomeScreen collapses N requests
+  // into one. May be an empty array (station has no data for the shown variable).
+  measurements?: Measurement[];
   rainfallMap?: Map<string, { value: number; units: string }>;
   distanceKm?: number;
   onClick: () => void;
 }
 
-export default function StationCard({ station, varId, rainfallMap, distanceKm, onClick }: StationCardProps) {
-  const { data: measurements } = useLatestMeasurements(station.station_id);
+export default function StationCard({ station, varId, measurements: providedMeasurements, rainfallMap, distanceKm, onClick }: StationCardProps) {
+  // Only fetch per-station when the caller didn't supply batched data.
+  const { data: fetchedMeasurements } = useLatestMeasurements(
+    providedMeasurements === undefined ? station.station_id : null
+  );
+  const measurements = providedMeasurements ?? fetchedMeasurements;
   const { settings } = useAppContext();
   const statusKey = stationStatusKey(station);
 
@@ -45,7 +53,9 @@ export default function StationCard({ station, varId, rainfallMap, distanceKm, o
     ? (windReadings.find(w => w.speedMeasurement.variable === reading.variable) ?? null)
     : null;
 
-  const isRainfallSelected = reading?.variable === 'RF_1_Tot300s';
+  // Derive from varId directly so rainfall mode works even when the caller passes
+  // only the displayed variable (batched data won't include an RF row otherwise).
+  const isRainfallSelected = (varId ?? reading?.variable) === 'RF_1_Tot300s';
   // Use bulk map data when available (1 call for all stations); fall back to per-station hook otherwise.
   const mapEntry = rainfallMap?.get(station.station_id);
   const { data: rainfall24hr, isLoading: rainfallLoading } = useRainfall24hr(

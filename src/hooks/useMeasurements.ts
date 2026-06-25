@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchLatestMeasurements, fetchHistoricalMeasurements, fetchMapMeasurements, fetchMapRainfall24hr } from '../api/measurements';
+import { fetchLatestMeasurements, fetchLatestMeasurementsBatch, fetchHistoricalMeasurements, fetchMapMeasurements, fetchMapRainfall24hr } from '../api/measurements';
 import type { TimeRange } from '../types/api';
 
 export function useLatestMeasurements(stationId: string | null) {
@@ -9,6 +9,22 @@ export function useLatestMeasurements(stationId: string | null) {
     enabled: !!stationId,
     staleTime: 1000 * 60 * 2,          // treat cached data as fresh for 2 min
     refetchInterval: 1000 * 60 * 5,    // background re-fetch every 5 min while panel is open
+  });
+}
+
+// Batched latest readings for a set of stations limited to the given variables.
+// One request replaces N per-station fetches. Returns Map<station_id, Measurement[]>.
+// The query key includes the sorted station + variable lists so it re-fetches when
+// the favorites or the displayed variable change.
+export function useLatestVarBatch(stationIds: string[], varIds: string[]) {
+  const stationKey = [...stationIds].sort().join(',');
+  const varKey = [...varIds].sort().join(',');
+  return useQuery({
+    queryKey: ['measurements', 'latestBatch', stationKey, varKey],
+    queryFn: () => fetchLatestMeasurementsBatch(stationIds, varIds),
+    enabled: stationIds.length > 0 && varIds.length > 0,
+    staleTime: 1000 * 60 * 2,
+    refetchInterval: 1000 * 60 * 5,
   });
 }
 
