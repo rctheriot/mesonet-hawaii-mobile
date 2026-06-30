@@ -32,6 +32,12 @@ describe('convertValue', () => {
     expect(unit).toBe('mph');
   });
 
+  it('converts rain intensity mm/hour → in/hr in imperial', () => {
+    const { value, unit } = convertValue(25.4, 'mm/hour', 'imperial', 'RFint_1_Max');
+    expect(value).toBeCloseTo(1, 2);
+    expect(unit).toBe('in/hr');
+  });
+
   it('converts station pressure kPa → inHg in imperial', () => {
     const { value, unit } = convertValue(100, 'kPa', 'imperial', 'P_1_Avg');
     expect(value).toBeCloseTo(29.53, 2);
@@ -154,6 +160,15 @@ describe('mergeWindReadings', () => {
 
   it('reports a null heading when direction is missing', () => {
     const { windReadings } = mergeWindReadings([{ variable: 'WS_1_Avg', value: 3, units: 'm/s' }]);
+    expect(windReadings[0].dirDeg).toBeNull();
+    expect(windReadings[0].compass).toBeNull();
+  });
+
+  it('treats a non-numeric direction value as missing (no "undefined" compass)', () => {
+    const { windReadings } = mergeWindReadings([
+      { variable: 'WS_1_Avg', value: 4, units: 'm/s' },
+      { variable: 'WDrs_1_Avg', value: 'NaN', units: 'deg' },
+    ]);
     expect(windReadings[0].dirDeg).toBeNull();
     expect(windReadings[0].compass).toBeNull();
   });

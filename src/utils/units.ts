@@ -181,7 +181,10 @@ export function mergeWindReadings<T extends { variable: string; value: string | 
 
   for (const [idx, speedItem] of speedMap.entries()) {
     const dirItem = dirMap.get(idx) ?? null;
-    const dirDeg = dirItem?.value != null ? Number(dirItem.value) : null;
+    // Guard non-finite values (a bad/empty reading) so degreesToCompass never
+    // indexes its table with NaN and renders `undefined`.
+    const parsedDir = dirItem?.value != null ? Number(dirItem.value) : NaN;
+    const dirDeg = Number.isFinite(parsedDir) ? parsedDir : null;
     windReadings.push({
       speedMeasurement: speedItem,
       dirDeg,
