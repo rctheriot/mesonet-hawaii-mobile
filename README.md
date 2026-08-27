@@ -11,11 +11,15 @@ nvm use default
 npm install
 ```
 
-Copy the env file and add your API key:
+Copy the env file and add your API keys:
 ```bash
 cp .env.example .env.local
-# Edit .env.local and set VITE_MESONET_API_KEY=<your key>
+# Edit .env.local and set:
+#   VITE_MESONET_API_KEY=<your HCDP key>
+#   VITE_CARTO_API_KEY=<your CARTO basemap key>
 ```
+
+Get a free CARTO basemap key at [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/) — no account needed, submit your email/domain/description and the key is emailed back immediately. Free tier covers 5M tile requests/month. Without this key, the map shows an "API KEY REQUIRED" watermark instead of the basemap.
 
 ## Development
 
@@ -39,12 +43,12 @@ Output goes to `dist/`.
 |---|---|---|
 | React | 19.2.4 | UI |
 | TypeScript | 5.9.3 | Type safety |
-| Vite | 7.3.1 | Build tool |
+| Vite | 7.3.6 | Build tool |
 | Tailwind CSS v4 | 4.2.1 | Styling |
 | Leaflet | 1.9.4 | Map rendering |
 | TanStack React Query | 5.90.21 | Data fetching & caching |
 | Recharts | 3.8.0 | Historical data charts |
-| react-router-dom | 7.13.1 | Client-side routing |
+| react-router-dom | 7.18.2 | Client-side routing |
 | vite-plugin-pwa | 1.2.0 | Service worker & PWA manifest |
 
 All packages are pinned to exact versions. See [dependency policy](#dependency-policy) below.
@@ -68,6 +72,14 @@ src/
 - **Base URL:** `https://api.hcdp.ikewai.org`
 - **Auth:** Bearer token via `VITE_MESONET_API_KEY` in `.env.local`
 - All requests go through `src/api/client.ts → apiGet<T>()` which uses native `fetch`
+
+## Map / Basemap Tiles
+
+The map (`StationMap.tsx`, `StationLocationMap.tsx`) renders CARTO's `light_all`/`dark_all` **raster** tiles (not vector) via Leaflet's `L.tileLayer`. Requests are authenticated with `VITE_CARTO_API_KEY` (query param `?key=...`), required since CARTO gates basemap tiles behind a free key — see [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/). Free tier: 5M tile requests/month.
+
+## Deploy
+
+Production is served by **Cloudflare Pages**, auto-building from pushes to `main`. Both `VITE_MESONET_API_KEY` and `VITE_CARTO_API_KEY` must be set as build-time environment variables in the Cloudflare Pages project settings (Production and Preview) — they're baked into the client bundle at build time, same as local dev.
 
 ## Dependency Policy
 
