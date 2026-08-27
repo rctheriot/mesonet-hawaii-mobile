@@ -7,9 +7,12 @@ import { stationStatusKey, STATUS_HEX, STATUS_HOLLOW } from '../../theme';
 import { stationDivIcon, selectedPinIcon, userLocationIcon } from './mapIcons';
 
 // ─── Tile sources (CartoDB raster) ───────────────────────────────────────────
+// CARTO requires a free API key (5M requests/month) since basemap tiles
+// otherwise show an "API KEY REQUIRED" watermark - see carto.com/basemaps/apikey.
+const CARTO_KEY = import.meta.env.VITE_CARTO_API_KEY;
 const TILE_URL = {
-  light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-  dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  light: `https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`,
+  dark:  `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`,
 };
 const ATTRIBUTION =
   '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> ' +
