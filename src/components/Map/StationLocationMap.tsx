@@ -39,9 +39,10 @@ export default function StationLocationMap({ station, markerColor, darkMode }: P
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    // ?? won't catch NaN (a station with no fixed location), so fall back explicitly.
     const { dlat, dlng } = stationJitter(station.station_id);
-    const markerLat = (station.lat ?? 20.5) + dlat;
-    const markerLng = (station.lng ?? -157.5) + dlng;
+    const markerLat = (Number.isFinite(station.lat) ? station.lat : 20.5) + dlat;
+    const markerLng = (Number.isFinite(station.lng) ? station.lng : -157.5) + dlng;
 
     const islandBounds = station.island ? ISLAND_BOUNDS[station.island] : undefined;
 

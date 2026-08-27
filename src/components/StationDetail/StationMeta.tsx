@@ -22,8 +22,9 @@ export default function StationMeta({ station }: StationMetaProps) {
     { label: 'Island',    value: station.island },
     { label: 'Elevation', value: elevationDisplay },
     // 2dp ≈ ±1 km precision — intentionally coarse to obscure exact install location.
-    { label: 'Latitude',  value: station.lat?.toFixed(2) },
-    { label: 'Longitude', value: station.lng?.toFixed(2) },
+    // Omit entirely when coords are absent (NaN) — e.g. repeaters with no fixed location.
+    { label: 'Latitude',  value: Number.isFinite(station.lat) ? station.lat.toFixed(2) : undefined },
+    { label: 'Longitude', value: Number.isFinite(station.lng) ? station.lng.toFixed(2) : undefined },
   ].filter(f => f.value != null);
 
   const allFields = [
