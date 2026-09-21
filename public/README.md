@@ -12,9 +12,12 @@ folders so it is never copied into `dist/`.
 | `pwa-192x192.png` | 192×192 |
 | `pwa-512x512.png` | 512×512 |
 
-## `american_samoa/` icons are PLACEHOLDERS
+## Artwork
 
-They are currently copies of the Hawaii icons, so that
-`VITE_APP_DATA=american_samoa` builds successfully before the real artwork lands.
-To replace them, overwrite the files in place keeping the same filenames and sizes —
-no code change is needed.
+Each region's set is the shared droplet mark with that region's flag as a rounded
+badge in the upper-left (36% of icon width, 5% margin — clears the droplet at every
+size). Save them as **opaque RGB, not RGBA**: iOS renders a transparent
+`apple-touch-icon.png` against black.
+
+To add a region, create `public/<assetDir>/` with all four files and set `assetDir`
+in `src/config/regions.data.ts`.

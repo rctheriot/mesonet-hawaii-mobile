@@ -201,8 +201,9 @@ set the PWA manifest `name`/`short_name`/`description`; substitute `%VITE_APP_NA
 `%VITE_APP_DESCRIPTION%` in `index.html`; and point Vite's `publicDir` at `public/<assetDir>/` so
 each region ships its own icons. `public/README.md` documents the required files.
 
-> The American Samoa icons in `public/american_samoa/` are **placeholders** (copies of the Hawaii
-> set) until real artwork lands. Overwrite in place — same filenames, no code change.
+> Each region's icons are the shared droplet mark with that region's flag badged into the
+> upper-left. Save them as **opaque RGB, not RGBA** — iOS renders a transparent
+> `apple-touch-icon.png` against black.
 
 ### Dev scripts
 `npm run dev` / `npm run build` target Hawaii; `npm run dev:as` / `npm run build:as` /
@@ -218,7 +219,6 @@ copy system for ~10 strings. Keep new glossary copy region-neutral.
 - Map markers are jittered ±0.0003° (deterministic per `station_id`) and the Info tab shows coordinates at 2dp, to obscure exact installation locations. Real coordinates are used everywhere else (distance, fly-to).
 - Variable sort in list view was removed pending stakeholder input on which variables matter most.
 - Star markers on map for favorites were tried and removed (hard to read) — circles only for now.
-- **Guam is not available yet.** `location=guam` returns `[]` from the API. Do not add a Guam entry to `REGIONS` until HCDP confirms both that the data exists and what the `location` slug is — the slugs are not guessable.
-- **American Samoa app icons are placeholders** (copies of the Hawaii set) in `public/american_samoa/`, pending artwork. Overwrite in place; no code change needed.
+- **Guam is planned for next year**, not now. `location=guam` returns `[]` from the API today. When it lands, confirm the `location` slug against the API before adding a `REGIONS` entry — the slugs are not guessable (`american-samoa` and `samoa` both return `[]`).
 - The glossary and Help copy are shared across regions and written region-neutrally on purpose. If a region ever needs genuinely different copy, add it to `RegionConfig.links` rather than branching in components.
 - Vite 7.3.1 has 3 dev-server CVEs (path traversal, fs.deny bypass, arbitrary file read). These are **dev server only** and cannot be exploited in the Cloudflare Pages production deployment (static output; no dev server runs there). They will be resolved when vite-plugin-pwa releases a version supporting Vite 8 that is ≥30 days old.
