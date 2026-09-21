@@ -4,6 +4,7 @@ import { VARIABLE_GLOSSARY } from '../../data/glossary';
 import { GROUP_ORDER, VARIABLE_GROUP } from '../../utils/units';
 import VariableInfoModal from '../Glossary/VariableInfoModal';
 import pkg from '../../../package.json';
+import { REGION } from '../../config/regions';
 
 interface HelpModalProps {
   onClose: () => void;
@@ -134,7 +135,7 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
                 <section className="space-y-1.5">
                   <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Browsing all stations</h3>
                   <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
-                    <span className="font-medium text-slate-700 dark:text-zinc-300">Station Network</span> shows every station in the Hawaii Mesonet.
+                    <span className="font-medium text-slate-700 dark:text-zinc-300">Station Network</span> shows every station in the {REGION.appName}.
                     Switch between <span className="font-medium text-slate-700 dark:text-zinc-300">Map</span> and <span className="font-medium text-slate-700 dark:text-zinc-300">List</span> views using the toggle at the top.
                     Tap any station on the map or in the list to open its full detail page.
                   </p>
@@ -238,7 +239,7 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
             {tab === 'about' && (
               <section className="space-y-4">
                 <div>
-                  <p className="text-base font-semibold text-slate-900 dark:text-zinc-100">Hawaii Mesonet</p>
+                  <p className="text-base font-semibold text-slate-900 dark:text-zinc-100">{REGION.appName}</p>
                   <p className="text-xs text-slate-400 dark:text-zinc-500 mt-0.5">Version {pkg.version}</p>
                   <button
                     onClick={forceUpdate}
@@ -253,29 +254,28 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
                 </div>
                 <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
                   Real-time environmental data from the{' '}
-                  <span className="font-medium text-slate-700 dark:text-zinc-300">Hawaii Climate Data Portal (HCDP)</span>{' '}
-                  Mesonet network, a statewide system of sensor stations monitoring temperature,
-                  rainfall, wind, humidity, and soil conditions across the Hawaiian Islands.
+                  <span className="font-medium text-slate-700 dark:text-zinc-300">{REGION.links.orgName}</span>{' '}
+                  Mesonet network, {REGION.links.networkBlurb}.
                 </p>
                 <div>
                   <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Website</p>
                   <a
-                    href="https://www.hawaii.edu/climate-data-portal/hawaii-mesonet/"
+                    href={REGION.links.mesonetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sky-500 dark:text-sky-400 text-sm hover:underline"
                   >
-                    hawaii.edu/climate-data-portal
+                    {REGION.links.mesonetUrlLabel}
                   </a>
                 </div>
                 <div>
                   <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Contact</p>
-                  <p className="text-slate-600 dark:text-zinc-300 text-sm font-medium">Ryan Theriot</p>
+                  <p className="text-slate-600 dark:text-zinc-300 text-sm font-medium">{REGION.links.contactName}</p>
                   <a
-                    href="mailto:rtheriot@hawaii.edu"
+                    href={`mailto:${REGION.links.contactEmail}`}
                     className="text-sky-500 dark:text-sky-400 text-sm hover:underline"
                   >
-                    rtheriot@hawaii.edu
+                    {REGION.links.contactEmail}
                   </a>
                   <p className="text-slate-500 dark:text-zinc-400 text-sm mt-1">
                     <a
@@ -288,21 +288,23 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
                     </a>
                   </p>
                 </div>
-                <div className="border-t border-slate-100 dark:border-zinc-800 pt-4">
-                  <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Funding</p>
-                  <p className="text-slate-500 dark:text-zinc-400 text-xs leading-relaxed">
-                    Hawaiʻi EPSCoR is funded by the National Science Foundation under EPSCoR Research
-                    Infrastructure Improvement Award <span className="font-medium text-slate-600 dark:text-zinc-300">#OIA-2149133</span>.{' '}
-                    <a
-                      href="https://hawaii.edu/epscor/change-hi/"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sky-500 dark:text-sky-400 hover:underline"
-                    >
-                      hawaii.edu/epscor/change-hi
-                    </a>
-                  </p>
-                </div>
+                {REGION.links.funder && (
+                  <div className="border-t border-slate-100 dark:border-zinc-800 pt-4">
+                    <p className="text-xs font-medium text-slate-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Funding</p>
+                    <p className="text-slate-500 dark:text-zinc-400 text-xs leading-relaxed">
+                      {REGION.links.funder.intro}{' '}
+                      <span className="font-medium text-slate-600 dark:text-zinc-300">{REGION.links.funder.awardNumber}</span>.{' '}
+                      <a
+                        href={REGION.links.funder.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sky-500 dark:text-sky-400 hover:underline"
+                      >
+                        {REGION.links.funder.label}
+                      </a>
+                    </p>
+                  </div>
+                )}
               </section>
             )}
 

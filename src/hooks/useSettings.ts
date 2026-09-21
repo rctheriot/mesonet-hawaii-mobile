@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { REGION, regionStorageKey } from '../config/regions';
 
 interface Settings {
   darkMode: boolean;
@@ -15,7 +16,11 @@ interface Settings {
   listIslandFilter: string;
 }
 
-const KEY = 'mesonet-settings';
+// Per region. Hawaii keeps the original 'mesonet-settings' so existing installs
+// are untouched; other regions get a suffix. In production each region is its own
+// origin anyway, but in dev they share localhost — without the suffix, American
+// Samoa would inherit Hawaii's saved map camera and open on empty ocean.
+const KEY = regionStorageKey('mesonet-settings');
 
 const DEFAULTS: Settings = {
   darkMode: false,
@@ -23,9 +28,9 @@ const DEFAULTS: Settings = {
   homeVarId: 'RF_1_Tot300s',
   units: 'imperial',
   mapMode: 'RF_1_Tot300s',
-  mapLat: 20.5,
-  mapLng: -157.5,
-  mapZoom: 7,
+  mapLat: REGION.mapCenter[0],
+  mapLng: REGION.mapCenter[1],
+  mapZoom: REGION.mapZoom,
   favSort: 'alpha',
   listSortBy: 'alpha',
   listIslandFilter: 'all',

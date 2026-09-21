@@ -14,6 +14,7 @@ import ReadingsGrid from '../components/StationDetail/ReadingsGrid';
 import HelpModal from '../components/Help/HelpModal';
 import SettingsModal from '../components/Settings/SettingsModal';
 import StationLocationMap from '../components/Map/StationLocationMap';
+import { REGION } from '../config/regions';
 
 export default function StationDetail() {
   const { stationId } = useParams<{ stationId: string }>();
@@ -180,7 +181,7 @@ export default function StationDetail() {
           <p className="text-sm text-slate-500 dark:text-zinc-400 mb-4">
             <span className={STATUS_TEXT[statusKey]}>{STATUS_LABEL[statusKey]}</span>
             {' · '}
-            {station.island ?? 'Hawaii'}
+            {station.island ?? REGION.regionLabel}
             {newestTimestamp && <> · Updated {relativeTime(newestTimestamp)}</>}
             {isStale && <span className="text-amber-500 dark:text-amber-400"> · Stale Data</span>}
           </p>

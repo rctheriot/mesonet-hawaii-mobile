@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import type { Station } from '../../types/api';
 import { stationDivIcon } from './mapIcons';
 import { stationJitter } from './StationMap';
+import { REGION } from '../../config/regions';
 
 // CARTO requires a free API key (5M requests/month) since basemap tiles
 // otherwise show an "API KEY REQUIRED" watermark - see carto.com/basemaps/apikey.
@@ -16,17 +17,17 @@ const ATTRIBUTION =
   '© <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> ' +
   '© <a href="https://carto.com/attributions">CARTO</a>';
 
-// Keys must match exactly what islandFromCoords() returns in src/api/stations.ts.
-// Bounds are trimmed aggressively to the main landmass so fitBounds picks the
-// highest zoom level that fits the island on a mobile screen.
-const ISLAND_BOUNDS: Record<string, L.LatLngBoundsLiteral> = {
-  'Hawaiʻi Island': [[18.880300, -156.140442], [20.287961, -154.769897]],
-  'Maui':           [[20.562082, -156.735077], [21.050540, -155.965347]],
-  'Oʻahu':          [[21.245222, -158.294449], [21.718680, -157.637329]],
-  'Kauaʻi':         [[21.88, -159.78], [22.23, -159.30]],
-  'Molokaʻi':       [[21.032596, -157.329712], [21.233702, -156.691818]],
-  'Lānaʻi':         [[20.722722, -157.085609], [20.938034, -156.798592]],
-};
+// Sub-region display bounds come from the shared region config, so this map and
+// islandFromCoords() can no longer drift apart — they read the same table by the
+// same name. `displayBounds` is trimmed to the landmass (falling back to the
+// wider derivation box) so fitBounds picks the highest zoom that still fits on a
+// phone screen.
+function displayBoundsFor(name: string | undefined): L.LatLngBoundsLiteral | undefined {
+  if (!name) return undefined;
+  const sr = REGION.subRegions.find(r => r.name === name);
+  if (!sr) return undefined;
+  return (sr.displayBounds ?? sr.bounds) as L.LatLngBoundsLiteral;
+}
 
 interface Props {
   station: Station;
@@ -44,14 +45,14 @@ export default function StationLocationMap({ station, markerColor, darkMode }: P
 
     // ?? won't catch NaN (a station with no fixed location), so fall back explicitly.
     const { dlat, dlng } = stationJitter(station.station_id);
-    const markerLat = (Number.isFinite(station.lat) ? station.lat : 20.5) + dlat;
-    const markerLng = (Number.isFinite(station.lng) ? station.lng : -157.5) + dlng;
+    const markerLat = (Number.isFinite(station.lat) ? station.lat : REGION.mapCenter[0]) + dlat;
+    const markerLng = (Number.isFinite(station.lng) ? station.lng : REGION.mapCenter[1]) + dlng;
 
-    const islandBounds = station.island ? ISLAND_BOUNDS[station.island] : undefined;
+    const islandBounds = displayBoundsFor(station.island);
 
     const map = L.map(containerRef.current, {
-      center: [20.5, -157.5],
-      zoom: 8,
+      center: REGION.mapCenter,
+      zoom: REGION.mapZoom + 1,
       dragging:        false,
       touchZoom:       false,
       scrollWheelZoom: false,

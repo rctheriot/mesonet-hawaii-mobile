@@ -73,6 +73,12 @@ export const SW_RANGE = { min: SW_STOPS[0].t, max: SW_STOPS[SW_STOPS.length - 1]
 export const SW_GRADIENT_CSS = stopsToCss(SW_STOPS);
 
 // ── Rainfall (5-min bucket, mm) — 0 (light blue) → 5 (deep blue) ─────────────
+// NOTE: this scale is shared by every region and is used for the 24hr total on
+// the map, not a 5-min bucket. Measured over 30 days of live data, the 5 mm
+// ceiling clamps ~25% of station-days in BOTH Hawaii and American Samoa, so wet
+// days render as one flat colour. Changing it alters the look of a shipped
+// product, so it is deliberately left alone pending a stakeholder decision —
+// see "Known Constraints" in CLAUDE.md.
 const RAIN_STOPS: ColorStop[] = [
   { t: 0, rgb: [186, 230, 253] },
   { t: 2, rgb: [59,  130, 246] },
