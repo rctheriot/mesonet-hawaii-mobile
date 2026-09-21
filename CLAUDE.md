@@ -120,10 +120,12 @@ Provides app-wide state without prop-drilling. Owns: `settings` (via `useSetting
 Used in list view (`StationList`) and the HomeScreen favorites list. Shows station name, island, status dot, relative last-report time, and one variable reading (the currently selected `varId`). Fetches its own measurements via `useLatestMeasurements`.
 
 ### Persistence (localStorage)
-Both keys are **namespaced by region id** (`mesonet-settings:<id>`, `mesonet-favorites:<id>`). In
-production each region is its own origin so this is redundant, but in dev they share `localhost` —
-without the namespace, switching `VITE_APP_DATA` inherits the other region's saved map camera
-(American Samoa opening on empty ocean at 20.5,-157.5) and favorites for station IDs that don't exist.
+Keys go through `regionStorageKey()` in `src/config/regions.ts`. **Hawaii keeps the original
+un-suffixed keys** (`mesonet-settings`, `mesonet-favorites`) so existing hawaiimesonet.app installs
+don't lose their saved stations — that app shipped before regions existed. Every other region gets
+a `-<region id>` suffix (`mesonet-favorites-american_samoa`). In production each region is its own
+origin so this is belt-and-braces, but in dev they share `localhost` — without the suffix, American
+Samoa inherits Hawaii's saved map camera and opens on empty ocean.
 - `useSettings` — darkMode, units, view/homeView, homeVarId, mapMode, map camera (mapLat/mapLng/mapZoom), favSort, listSortBy, listIslandFilter. Camera defaults come from `REGION.mapCenter`/`REGION.mapZoom`.
 - `useFavorites` — Set of favorited station IDs
 

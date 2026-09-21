@@ -35,6 +35,20 @@ describe('islandFromCoordsIn — Hawaii', () => {
     expect(inHawaii(22.5, -156.0)).toBe('Hawaii');
   });
 
+  // The island boxes replaced a chain of open-ended predicates (Kauaʻi was
+  // unbounded to the north/south/west; Hawaiʻi Island was a bare `lat <= 20.35`
+  // catch-all at any longitude). Classification was diffed old-vs-new across all
+  // 108 live stations with zero changes; these are the real station nearest each
+  // box edge, so a box that shrinks below the deployment fails here.
+  it('classifies the real station closest to each box edge', () => {
+    expect(inHawaii(21.9053, -159.5104)).toBe('Kauaʻi');        // 0621 Lawai NTBG
+    expect(inHawaii(21.6457, -157.9307)).toBe('Oʻahu');         // 0552 Laie
+    expect(inHawaii(21.2160, -157.2418)).toBe('Molokaʻi');      // 0431 Anapuka
+    expect(inHawaii(20.7972, -156.8549)).toBe('Lānaʻi');        // 0301 Awehi
+    expect(inHawaii(20.7195, -156.0024)).toBe('Maui');          // 0165 Hamoa
+    expect(inHawaii(18.9530, -155.6890)).toBe('Hawaiʻi Island'); // 0233 Ka Lae
+  });
+
   it('returns "Unknown" for non-finite coordinates (e.g. a repeater with no fixed location)', () => {
     // Regression: the API sends null lat/lng for some stations. These must not be
     // coerced to (0,0) and mislabeled "Hawaiʻi Island".

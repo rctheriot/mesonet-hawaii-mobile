@@ -70,9 +70,11 @@ Hawaii — a typo in a Pages env var must not ship one region's data under anoth
 `%VITE_APP_NAME%` / `%VITE_APP_DESCRIPTION%` in `index.html`, and point Vite's `publicDir` at
 `public/<assetDir>/` so each region ships its own icons (see `public/README.md`).
 
-`useSettings` and `useFavorites` namespace their localStorage keys by region id. In production the
-regions are separate origins so this is redundant, but in dev they share `localhost` — without it,
-switching regions inherits the other one's saved map camera and favorites.
+`useSettings` and `useFavorites` build their localStorage keys with `regionStorageKey()`. Hawaii
+keeps the original un-suffixed keys so existing installs don't lose saved stations; other regions
+get a `-<region id>` suffix. In production the regions are separate origins so this is
+belt-and-braces, but in dev they share `localhost` — without it, switching regions inherits the
+other one's saved map camera and favorites.
 
 ## Tech Stack
 

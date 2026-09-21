@@ -150,9 +150,11 @@ export const REGIONS: Record<string, RegionConfig> = {
     mapZoom: 11,
     // Wide enough to include the Manuʻa Islands, should stations be added there.
     geoBounds: { minLat: -15.0, maxLat: -13.9, minLng: -171.2, maxLng: -169.3 },
-    // Wider than geoBounds so the map can be zoomed out for context without the
-    // viscous clamp fighting the drag.
-    mapMaxBounds: [[-15.6, -172.2], [-13.2, -168.4]],
+    // Deliberately much wider than geoBounds. maxBoundsViscosity is 1.0, so once
+    // the viewport is larger than the bounds the map goes rigid — this span
+    // (4.0° lat x 6.3° lng) keeps panning fluid down to ~z9 on a desktop viewport
+    // and ~z8 on a phone, while still covering Tutuila, Aunuʻu and the Manuʻa group.
+    mapMaxBounds: [[-16.3, -173.5], [-12.3, -167.2]],
     geoOutsideMessage:
       'Your location appears to be outside American Samoa. Near Me only works on the islands.',
     // Aunuʻu first: it sits inside Tutuila's permissive box.

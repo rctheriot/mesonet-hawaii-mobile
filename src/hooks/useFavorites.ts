@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
-import { REGION } from '../config/regions';
+import { regionStorageKey } from '../config/regions';
 
-// Namespaced by region — see the note on the settings key in useSettings.ts.
-const KEY = `mesonet-favorites:${REGION.id}`;
+// Per region — see the note on the settings key in useSettings.ts. Hawaii keeps
+// the original key, so no existing user loses their saved stations.
+const KEY = regionStorageKey('mesonet-favorites');
 
 function load(): Set<string> {
   try {
