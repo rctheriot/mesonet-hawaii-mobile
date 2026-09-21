@@ -19,6 +19,7 @@ const ATTRIBUTION =
   '© <a href="https://carto.com/attributions">CARTO</a>';
 
 import { haversineKm, stationJitter } from '../../utils/geo';
+import { REGION } from '../../config/regions';
 export { haversineKm, stationJitter };
 
 // ─── Marker icon helper ───────────────────────────────────────────────────────
@@ -106,10 +107,12 @@ export default function StationMap({
     if (!containerRef.current || mapRef.current) return;
 
     const map = L.map(containerRef.current, {
-      center: initialCenter ?? [20.5, -157.5],
-      zoom: initialZoom ?? 7,
+      center: initialCenter ?? REGION.mapCenter,
+      zoom: initialZoom ?? REGION.mapZoom,
       zoomControl: false,
-      maxBounds: L.latLngBounds([17, -163], [24, -152]),
+      // Region-scoped pan limit — a hardcoded Hawaii box here silently snapped
+      // other regions' maps into the middle of the Pacific.
+      maxBounds: L.latLngBounds(REGION.mapMaxBounds),
       maxBoundsViscosity: 1.0,
     });
 

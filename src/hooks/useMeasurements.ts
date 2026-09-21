@@ -92,7 +92,7 @@ export function useMapMeasurements(varId: string | null) {
   });
 }
 
-// Sums 24hr of RF_1_Tot300s per station across all Hawaii stations.
+// Sums 24hr of RF_1_Tot300s per station across every station in the region.
 export function useMapRainfall24hr(enabled: boolean) {
   const { data: variables } = useVariables();
   const units = variables?.get('RF_1_Tot300s')?.units || 'mm';

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
+import { REGION } from '../../config/regions';
 
 type Platform = 'ios' | 'android' | null;
 
@@ -84,7 +85,7 @@ export default function PWAInstallPrompt() {
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center text-white text-sm font-bold">M</div>
             <div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-zinc-100">Hawaii Mesonet</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-zinc-100">{REGION.appName}</p>
               <p className="text-xs text-slate-500 dark:text-zinc-400">Add to Home Screen</p>
             </div>
           </div>

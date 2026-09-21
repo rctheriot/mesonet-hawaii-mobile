@@ -1,4 +1,5 @@
 import { apiGet } from './client';
+import { REGION } from '../config/regions';
 
 export interface VariableInfo {
   units: string;
@@ -12,7 +13,7 @@ export interface VariableInfo {
 export async function fetchVariables(): Promise<Map<string, VariableInfo>> {
   const { data } = await apiGet<Record<string, unknown>[] | Record<string, Record<string, unknown>>>(
     '/mesonet/db/variables',
-    { location: 'hawaii', limit: 1000 }
+    { location: REGION.apiLocation, limit: 1000 }
   );
   const rows = Array.isArray(data) ? data : Object.values(data);
   const map = new Map<string, VariableInfo>();
