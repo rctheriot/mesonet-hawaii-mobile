@@ -15,6 +15,13 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # One leg per region. The app is built from a single repo with the region
+      # selected by VITE_APP_DATA, so a config change that breaks one region's
+      # build is exactly the failure this workflow exists to catch.
+      matrix:
+        region: [hawaii, american_samoa]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,10 +35,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Region-independent (the suites drive region config explicitly), so this
+      # runs identically on every matrix leg — cheap enough to leave in place.
       - name: Unit tests
         run: npm test
 
       # `npm run build` is `tsc -b && vite build` — covers typecheck + production build.
       # No API key needed: it's only read at runtime, so the bundle builds fine without it.
-      - name: Typecheck & build
+      - name: Typecheck & build (${{ matrix.region }})
         run: npm run build
+        env:
+          VITE_APP_DATA: ${{ matrix.region }}

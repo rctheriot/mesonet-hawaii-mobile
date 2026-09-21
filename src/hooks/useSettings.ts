@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { REGION } from '../config/regions';
 
 interface Settings {
   darkMode: boolean;
@@ -15,7 +16,12 @@ interface Settings {
   listIslandFilter: string;
 }
 
-const KEY = 'mesonet-settings';
+// Namespaced by region. In production each region lives on its own domain, so
+// localStorage is already isolated — but in dev every region is served from the
+// same localhost origin, where an un-namespaced key would hand one region the
+// other's saved map camera (American Samoa opening on empty ocean at 20.5,-157.5)
+// and favorites for station IDs that don't exist in it.
+const KEY = `mesonet-settings:${REGION.id}`;
 
 const DEFAULTS: Settings = {
   darkMode: false,
@@ -23,9 +29,9 @@ const DEFAULTS: Settings = {
   homeVarId: 'RF_1_Tot300s',
   units: 'imperial',
   mapMode: 'RF_1_Tot300s',
-  mapLat: 20.5,
-  mapLng: -157.5,
-  mapZoom: 7,
+  mapLat: REGION.mapCenter[0],
+  mapLng: REGION.mapCenter[1],
+  mapZoom: REGION.mapZoom,
   favSort: 'alpha',
   listSortBy: 'alpha',
   listIslandFilter: 'all',

@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:as": "VITE_APP_DATA=american_samoa vite",
     "build": "tsc -b && vite build",
+    "build:as": "VITE_APP_DATA=american_samoa npm run build",
     "preview": "vite preview",
+    "preview:as": "VITE_APP_DATA=american_samoa vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
   },

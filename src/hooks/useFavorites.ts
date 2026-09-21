@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
+import { REGION } from '../config/regions';
 
-const KEY = 'mesonet-favorites';
+// Namespaced by region — see the note on the settings key in useSettings.ts.
+const KEY = `mesonet-favorites:${REGION.id}`;
 
 function load(): Set<string> {
   try {

@@ -12,12 +12,12 @@ export const VARIABLE_GLOSSARY: Record<string, GlossaryEntry> = {
     label: 'Air Temperature',
     description: 'The temperature of the air at the station, measured in the shade to avoid direct sunlight.',
     examplesImperial: [
-      '60–70°F: a comfortable Hawaii morning',
+      '60–70°F: a comfortable tropical morning',
       '80–90°F: a hot, sunny afternoon',
       '90°F+: very hot, unusual at higher elevations',
     ],
     examplesMetric: [
-      '16–21°C: a comfortable Hawaii morning',
+      '16–21°C: a comfortable tropical morning',
       '27–32°C: a hot, sunny afternoon',
       '32°C+: very hot, unusual at higher elevations',
     ],
@@ -27,11 +27,11 @@ export const VARIABLE_GLOSSARY: Record<string, GlossaryEntry> = {
     label: 'Air Temperature (Sensor 2)',
     description: 'A second air temperature sensor at the same station, used for redundancy or measuring at a different height.',
     examplesImperial: [
-      '60–70°F: a comfortable Hawaii morning',
+      '60–70°F: a comfortable tropical morning',
       '80–90°F: a hot, sunny afternoon',
     ],
     examplesMetric: [
-      '16–21°C: a comfortable Hawaii morning',
+      '16–21°C: a comfortable tropical morning',
       '27–32°C: a hot, sunny afternoon',
     ],
     unitNote: 'Displayed in °F (Imperial) or °C (Metric)',
@@ -101,12 +101,12 @@ export const VARIABLE_GLOSSARY: Record<string, GlossaryEntry> = {
     description: 'The pressure exerted by water vapor in the air. A direct measure of how much moisture is present, independent of temperature.',
     examplesImperial: [
       '0.5 kPa: dry mountain air',
-      '2–3 kPa: typical coastal Hawaii conditions',
+      '2–3 kPa: typical tropical coastal conditions',
       '4+ kPa: very humid tropical air',
     ],
     examplesMetric: [
       '0.5 kPa: dry mountain air',
-      '2–3 kPa: typical coastal Hawaii conditions',
+      '2–3 kPa: typical tropical coastal conditions',
       '4+ kPa: very humid tropical air',
     ],
     unitNote: 'Measured in kPa (kilopascals)',
@@ -116,11 +116,11 @@ export const VARIABLE_GLOSSARY: Record<string, GlossaryEntry> = {
     description: 'A second vapor pressure sensor for redundancy.',
     examplesImperial: [
       '0.5 kPa: dry mountain air',
-      '2–3 kPa: typical coastal Hawaii',
+      '2–3 kPa: typical tropical coastal conditions',
     ],
     examplesMetric: [
       '0.5 kPa: dry mountain air',
-      '2–3 kPa: typical coastal Hawaii',
+      '2–3 kPa: typical tropical coastal conditions',
     ],
     unitNote: 'Measured in kPa (kilopascals)',
   },
@@ -214,7 +214,7 @@ export const VARIABLE_GLOSSARY: Record<string, GlossaryEntry> = {
   // ── Wind ───────────────────────────────────────────────────────────────────
   WS_1_Avg: {
     label: 'Wind Speed',
-    description: "Average wind speed over the measurement interval. Hawaii's trade winds typically blow from the northeast at 10–20 mph.",
+    description: "Average wind speed over the measurement interval. Pacific trade winds typically blow from the east or northeast at 10–20 mph.",
     examplesImperial: [
       '0–8 mph: calm to light breeze',
       '9–20 mph: typical trade wind conditions',
@@ -231,7 +231,7 @@ export const VARIABLE_GLOSSARY: Record<string, GlossaryEntry> = {
   },
   WDrs_1_Avg: {
     label: 'Wind Direction',
-    description: "The compass direction the wind is coming FROM, measured in degrees clockwise from north. Hawaii's prevailing trade winds come from the northeast.",
+    description: "The compass direction the wind is coming FROM, measured in degrees clockwise from north. Prevailing Pacific trade winds come from the east or northeast.",
     examplesImperial: [
       '0° / 360°: North',
       '45°: Northeast — typical trade winds',

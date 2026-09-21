@@ -6,6 +6,7 @@ import { ALLOWED_VARIABLES, convertValue, formatValue, mergeWindReadings, kmToMi
 import { relativeTime } from '../utils/time';
 import { stationStatusKey, STATUS_DOT } from '../theme';
 import type { Station, Measurement } from '../types/api';
+import { REGION } from '../config/regions';
 
 interface StationCardProps {
   station: Station;
@@ -90,7 +91,7 @@ export default function StationCard({ station, varId, measurements: providedMeas
           {station.full_name ?? station.name ?? station.station_id}
         </p>
         <p className="text-sm text-slate-400 dark:text-zinc-500 mt-0.5 truncate">
-          {station.island ?? 'Hawaii'}
+          {station.island ?? REGION.regionLabel}
           {distanceKm != null && (
             <span className="ml-1.5">
               · {settings.units === 'imperial'

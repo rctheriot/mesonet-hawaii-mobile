@@ -1,5 +1,6 @@
 import { apiGet } from './client';
 import type { Measurement, TimeRange } from '../types/api';
+import { REGION } from '../config/regions';
 
 export async function fetchLatestMeasurements(stationId: string): Promise<Measurement[]> {
   const { data } = await apiGet<Measurement[] | Record<string, Measurement>>(
@@ -9,7 +10,7 @@ export async function fetchLatestMeasurements(stationId: string): Promise<Measur
       limit: 200,
       join_metadata: true,
       local_tz: true,
-      location: 'hawaii',
+      location: REGION.apiLocation,
     }
   );
   if (Array.isArray(data)) return data;
@@ -46,7 +47,7 @@ export async function fetchLatestMeasurementsBatch(
       start_date: start.toISOString(),
       end_date: now.toISOString(),
       local_tz: true,
-      location: 'hawaii',
+      location: REGION.apiLocation,
       limit: 50000, // safety cap only; the date range is the real bound
     }
   );
@@ -70,7 +71,7 @@ export async function fetchLatestMeasurementsBatch(
   return result;
 }
 
-// Latest value per station for a single variable, across all Hawaii stations.
+// Latest value per station for a single variable, across every station in the region.
 // Returns Map<station_id, value>. Units are sourced from the cached /variables
 // endpoint by the caller, so join_metadata is intentionally omitted here — it
 // would ~4x the payload by repeating identical station/variable metadata on every
@@ -90,7 +91,7 @@ export async function fetchMapMeasurements(varId: string): Promise<Map<string, n
       var_ids: varId,
       start_date: start.toISOString(),
       end_date: now.toISOString(),
-      location: 'hawaii',
+      location: REGION.apiLocation,
       limit: 50000, // safety cap only; the date range is the real bound
     }
   );
@@ -112,7 +113,7 @@ export async function fetchMapMeasurements(varId: string): Promise<Map<string, n
   return out;
 }
 
-// Sums 24hr of RF_1_Tot300s per station across all Hawaii stations.
+// Sums 24hr of RF_1_Tot300s per station across every station in the region.
 // Returns Map<station_id, total>. join_metadata omitted (this is the heaviest
 // query — ~50k rows; the flag tripled the payload to ~8MB).
 export async function fetchMapRainfall24hr(): Promise<Map<string, number>> {
@@ -124,7 +125,7 @@ export async function fetchMapRainfall24hr(): Promise<Map<string, number>> {
       var_ids: 'RF_1_Tot300s',
       start_date: start.toISOString(),
       end_date: now.toISOString(),
-      location: 'hawaii',
+      location: REGION.apiLocation,
       limit: 50000,
     }
   );
@@ -161,7 +162,7 @@ export async function fetchHistoricalMeasurements(
       end_date: now.toISOString(),
       join_metadata: true,      // needed so each row includes 'units' for conversion
       local_tz: true,
-      location: 'hawaii',
+      location: REGION.apiLocation,
       limit: 10000,             // high limit — 7d of 5-min data ≈ 2016 rows per variable
     }
   );

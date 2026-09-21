@@ -5,6 +5,7 @@ import { stationStatusKey, STATUS_DOT, STATUS_TEXT, STATUS_LABEL } from '../../t
 import { haversineKm } from '../Map/StationMap';
 import { kmToMiles } from '../../utils/units';
 import type { UnitSystem } from '../../utils/units';
+import { REGION } from '../../config/regions';
 
 const VAR_UNITS: Record<string, { metric: string; imperial: string }> = {
   Tair_1_Avg:   { metric: '°C',   imperial: '°F'   },
@@ -62,7 +63,7 @@ export default function StationList({ stations, onSelectStation, favorites, coor
   const filtered = useMemo(() => {
     return stations.filter(s => {
       if (favoritesOnly && !favorites.has(s.station_id)) return false;
-      if (islandFilter !== 'all' && (s.island ?? 'Hawaii') !== islandFilter) return false;
+      if (islandFilter !== 'all' && (s.island ?? REGION.regionLabel) !== islandFilter) return false;
       return true;
     });
   }, [stations, islandFilter, favoritesOnly, favorites]);
@@ -176,7 +177,7 @@ export default function StationList({ stations, onSelectStation, favorites, coor
                   </span>
                 </div>
                 <div className="text-sm text-slate-400 dark:text-zinc-500">
-                  {station.island ?? 'Hawaii'}
+                  {station.island ?? REGION.regionLabel}
                   {distLabel && <> · {distLabel}</>}
                 </div>
               </div>
