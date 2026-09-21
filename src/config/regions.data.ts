@@ -47,6 +47,14 @@ export interface RegionConfig {
   subRegions: SubRegion[];
   /** Subdirectory of `public/` holding this region's icons; becomes Vite's publicDir. */
   assetDir: string;
+  /**
+   * Breakpoints (mm) for the 24hr rainfall colour scale: [low, mid, high].
+   * Region-specific because rainfall climate differs by an order of magnitude —
+   * with Hawaii's 5 mm ceiling, 75% of American Samoa's stations sat above the
+   * top stop and the whole map rendered one flat colour. Values above the top
+   * stop clamp, so set it near the wet-day maximum, not the record maximum.
+   */
+  rainStopsMm: [number, number, number];
   links: {
     mesonetUrl: string;
     /** Display text for mesonetUrl (the bare host+path, not the full URL). */
@@ -128,6 +136,9 @@ export const REGIONS: Record<string, RegionConfig> = {
       },
     ],
     assetDir: 'hawaii',
+    // Unchanged from the single-region app. Measured against live data: only
+    // 1 of 77 stations exceeded 5 mm over 24h.
+    rainStopsMm: [0, 2, 5],
     links: {
       ...HCDP_LINKS,
       networkBlurb:
@@ -171,6 +182,9 @@ export const REGIONS: Record<string, RegionConfig> = {
       },
     ],
     assetDir: 'american_samoa',
+    // Measured against live data: 24h totals ran 0–33 mm with a 13.5 mm median,
+    // so Hawaii's 5 mm ceiling clamped 6 of 8 stations to one colour.
+    rainStopsMm: [0, 10, 40],
     links: {
       ...HCDP_LINKS,
       networkBlurb:

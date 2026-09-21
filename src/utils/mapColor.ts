@@ -1,3 +1,4 @@
+import { REGION } from '../config/regions';
 type RGB = [number, number, number];
 
 interface ColorStop { t: number; rgb: RGB }
@@ -72,12 +73,18 @@ export function swToHex(wm2: number): string { return stopsToHex(SW_STOPS, wm2);
 export const SW_RANGE = { min: SW_STOPS[0].t, max: SW_STOPS[SW_STOPS.length - 1].t };
 export const SW_GRADIENT_CSS = stopsToCss(SW_STOPS);
 
-// ── Rainfall (5-min bucket, mm) — 0 (light blue) → 5 (deep blue) ─────────────
-const RAIN_STOPS: ColorStop[] = [
-  { t: 0, rgb: [186, 230, 253] },
-  { t: 2, rgb: [59,  130, 246] },
-  { t: 5, rgb: [30,   58, 138] },
+// ── Rainfall (mm) — light blue → deep blue ───────────────────────────────────
+// Breakpoints come from the region config: rainfall climate varies by an order
+// of magnitude between regions, and a scale whose top stop sits below the
+// typical daily total renders the map a single flat colour. Colours are shared;
+// only the thresholds move. MapLegend reads RAIN_RANGE_MM/RAIN_GRADIENT_CSS, so
+// the legend follows automatically.
+const RAIN_RGB: [number, number, number][] = [
+  [186, 230, 253],
+  [59,  130, 246],
+  [30,   58, 138],
 ];
+const RAIN_STOPS: ColorStop[] = REGION.rainStopsMm.map((t, i) => ({ t, rgb: RAIN_RGB[i] }));
 export function rainToHex(mm: number): string { return stopsToHex(RAIN_STOPS, mm); }
 export const RAIN_RANGE_MM = { min: RAIN_STOPS[0].t, max: RAIN_STOPS[RAIN_STOPS.length - 1].t };
 export const RAIN_GRADIENT_CSS = stopsToCss(RAIN_STOPS);

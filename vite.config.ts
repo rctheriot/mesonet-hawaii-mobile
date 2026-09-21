@@ -20,12 +20,6 @@ export default defineConfig(({ mode }) => {
     // `/favicon.png` etc. keep working and nothing downstream needs region-aware paths.
     publicDir: `public/${region.assetDir}`,
 
-    // Vite substitutes %VITE_*% in index.html from the env it loads. Defining these
-    // here keeps the title and meta description in sync with the region without a
-    // second copy of the strings in Cloudflare's env config.
-    define: {},
-    envPrefix: 'VITE_',
-
     // Unit tests run in a plain Node environment — current suites cover pure
     // utility functions only. Add a jsdom environment later when testing components.
     test: {
@@ -41,10 +35,16 @@ export default defineConfig(({ mode }) => {
         // derived from VITE_APP_DATA rather than set as their own env vars, so a
         // Pages project only ever needs the one region variable.
         name: 'region-html-vars',
-        transformIndexHtml(html: string) {
-          return html
-            .replaceAll('%VITE_APP_NAME%', region.appName)
-            .replaceAll('%VITE_APP_DESCRIPTION%', region.description);
+        // order:'pre' so this runs BEFORE Vite's built-in HTML env replacement.
+        // Otherwise Vite sees the unresolved placeholders first and warns
+        // "%VITE_APP_NAME% is not defined in env variables" on every build.
+        transformIndexHtml: {
+          order: 'pre' as const,
+          handler(html: string) {
+            return html
+              .replaceAll('%VITE_APP_NAME%', region.appName)
+              .replaceAll('%VITE_APP_DESCRIPTION%', region.description);
+          },
         },
       },
       VitePWA({
