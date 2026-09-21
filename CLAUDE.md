@@ -218,6 +218,16 @@ copy system for ~10 strings. Keep new glossary copy region-neutral.
 - API key is baked into the Vite bundle at build time (acceptable for now, read-only public data API). Plan to proxy through server-side to hide key in the future.
 - Map markers are jittered ±0.0003° (deterministic per `station_id`) and the Info tab shows coordinates at 2dp, to obscure exact installation locations. Real coordinates are used everywhere else (distance, fly-to).
 - Variable sort in list view was removed pending stakeholder input on which variables matter most.
+- **The rainfall colour scale needs a stakeholder decision — Tier 3.** `RAIN_STOPS` in `src/utils/mapColor.ts` tops out at 5 mm and is shared by every region. It is applied to the **24hr total** on the map, though the comment describes a 5-min bucket. Measured over 30 days of live data (per-station daily totals):
+
+  | | median | p75 | p90 | p95 | p99 | max |
+  |---|---|---|---|---|---|---|
+  | Hawaii (2390 station-days) | 0.8 | 5.1 | 17.4 | 30.2 | 80.5 | 241.1 mm |
+  | American Samoa (248 station-days) | 0.0 | 4.1 | 17.0 | 34.0 | 77.7 | 106.9 mm |
+
+  The two regions are statistically near-identical, so this is **not** a per-region problem. A 5 mm ceiling clamps ~25% of station-days in both, meaning the map renders one flat colour on any wet day; 40 mm would clamp ~3–4%, 60 mm ~1.5–2.5%. Separately, with a median near 0 and p90 at ~17 mm, a 3-stop linear ramp puts most stations in the bottom sliver — more low-end stops would read better than any single ceiling.
+
+  Open questions for stakeholders: fixed scale or dynamic-to-current-data? (Fixed keeps colours comparable between visits; dynamic always spreads but makes a dry day look alarming.) What ceiling? How many stops? **Do not change this as a side effect of other work** — it alters the appearance of a shipped product.
 - Star markers on map for favorites were tried and removed (hard to read) — circles only for now.
 - **Guam is planned for next year**, not now. `location=guam` returns `[]` from the API today. When it lands, confirm the `location` slug against the API before adding a `REGIONS` entry — the slugs are not guessable (`american-samoa` and `samoa` both return `[]`).
 - The glossary and Help copy are shared across regions and written region-neutrally on purpose. If a region ever needs genuinely different copy, add it to `RegionConfig.links` rather than branching in components.
