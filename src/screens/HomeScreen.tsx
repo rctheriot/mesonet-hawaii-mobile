@@ -43,13 +43,23 @@ export default function HomeScreen() {
   }, [favorites, stations]);
 
   // Region-wide 24h rainfall is the heaviest query in the app (~50k rows). Only
-  // fetch it when rainfall is the displayed variable AND there is at least one
+  // fetch it when rainfall is the displayed variable AND the user has at least one
   // saved station to render it on — with no favorites the result has no consumer.
+  //
+  // Gated on `favorites` (read synchronously from localStorage), not on
+  // myStations: myStations is favorites ∩ stations, so gating on it would make
+  // this query wait for the station list instead of running alongside it.
   const {
     data: rainfallMap,
     isFetching: rainfallFetching,
-    isPending: rainfallPending,
-  } = useMapRainfall24hr(homeVarId === 'RF_1_Tot300s' && myStations.length > 0);
+    isError: rainfallError,
+  } = useMapRainfall24hr(homeVarId === 'RF_1_Tot300s' && favorites.size > 0);
+
+  // "Settled" must be derived from the result, not from query status: the hook
+  // withholds values until /variables resolves, so the query can be status
+  // 'success' while rainfallMap is still undefined. Keying off status there would
+  // let every card start a fallback request again.
+  const rainfallBulkSettled = rainfallMap != null || rainfallError;
 
   // One batched request for the displayed variable (+ wind direction when Wind is
   // selected) across all favorites — replaces the old per-station fan-out.
@@ -332,7 +342,7 @@ export default function HomeScreen() {
                       varId={homeVarId}
                       measurements={latestBatch?.get(station.station_id) ?? []}
                       rainfallMap={rainfallMap}
-                      rainfallBulkSettled={!rainfallPending}
+                      rainfallBulkSettled={rainfallBulkSettled}
                       distanceKm={distanceMap.get(station.station_id)}
                       onClick={() => navigate(`/station/${station.station_id}`)}
                     />
