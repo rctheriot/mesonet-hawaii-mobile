@@ -15,16 +15,19 @@ export const ALLOWED_VARIABLES = new Set([
   'SHFsrf_1_Avg',
   'SM_1_Avg', 'SM_2_Avg', 'SM_3_Avg',
   'RF_1_Tot300s', 'RFint_1_Max',
+  'Wlvl_1_Avg', 'Twt_1_Avg',
 ]);
 
 // ─── Variable grouping ────────────────────────────────────────────────────────
 
 export const GROUP_ORDER = [
-  'Rainfall', 'Temperature', 'Humidity', 'Radiation', 'Wind', 'Pressure', 'Soil',
+  'Water', 'Rainfall', 'Temperature', 'Humidity', 'Radiation', 'Wind', 'Pressure', 'Soil',
 ] as const;
 export type VariableGroup = typeof GROUP_ORDER[number];
 
 export const VARIABLE_GROUP: Record<string, VariableGroup> = {
+  // Water (stream gauges) — first, since stream level is the flash-flood signal
+  Wlvl_1_Avg: 'Water', Twt_1_Avg: 'Water',
   // Rainfall
   RF_1_Tot300s: 'Rainfall', RFint_1_Max:  'Rainfall',
   // Temperature
@@ -109,6 +112,15 @@ export function convertValue(
     case 'mm/hour':
       return { value: value * 0.03937, unit: 'in/hr' };
 
+    case 'm':
+      // Water level → feet (the unit NWS uses for stream stage). Keyed on the
+      // variable, not just 'm', so any future metre-valued variable is a
+      // deliberate choice rather than a silent conversion.
+      if (variableId && /^Wlvl_/.test(variableId)) {
+        return { value: value * 3.28084, unit: 'ft' };
+      }
+      return { value, unit };
+
     case 'm/s':
       return { value: value * 2.237, unit: 'mph' };
 
@@ -134,11 +146,13 @@ export function getVariableLabel(varId: string, apiDisplayName?: string): string
 
 // Format a converted value for display.
 // Rainfall uses 2 decimal places (inch values are small and lose precision at 1dp).
+// Water level uses 2 (gauge stage changes by centimetres; 0.038 m must not read as 0.0).
 // Wind direction: whole degrees. Everything else: 1 decimal place.
 export function formatValue(value: number, variableId?: string): string {
   if (variableId && /^WDrs/.test(variableId)) return Math.round(value).toString();
   if (variableId && /^RF/.test(variableId)) return value.toFixed(2);
   if (variableId && /^P(sl)?_/.test(variableId)) return value.toFixed(2);
+  if (variableId && /^Wlvl_/.test(variableId)) return value.toFixed(2);
   return value.toFixed(1);
 }
 

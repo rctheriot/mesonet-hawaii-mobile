@@ -3,6 +3,8 @@ import { useAppContext } from '../context/AppContext';
 import type { Measurement } from '../types/api';
 import type { ChartVarPair } from '../types/ui';
 
+const WATER_LEVEL = 'Wlvl_1_Avg';
+
 // Manages the two-variable chart selection for a given station.
 //
 // Selection behavior:
@@ -37,6 +39,18 @@ export function useChartVars(
     if (!v0 && !v1) {
       v0 = available.has('RF_1_Tot300s') ? 'RF_1_Tot300s' : null;
       v1 = available.has('Tair_1_Avg')   ? 'Tair_1_Avg'   : null;
+    }
+
+    // Stream gauges lead with water level — the flash-flood signal — even when a
+    // selection carried over from another station (e.g. rainfall stays valid while
+    // air temp drops, which would otherwise leave rainfall in the hero). Rainfall
+    // keeps the second slot so the chart pairs stream rise with the rain driving it.
+    // Gated on "no air temp": some full weather stations (Hawaii's Hoʻolawa) also
+    // report water level, and their existing defaults shouldn't change.
+    const isStreamGauge = available.has(WATER_LEVEL) && !available.has('Tair_1_Avg');
+    if (isStreamGauge && v0 !== WATER_LEVEL && v1 !== WATER_LEVEL) {
+      v1 = v0 ?? v1;
+      v0 = WATER_LEVEL;
     }
 
     if (v0 !== chartVars[0] || v1 !== chartVars[1]) setChartVars([v0, v1]);

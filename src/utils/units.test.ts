@@ -54,6 +54,17 @@ describe('convertValue', () => {
     expect(convertValue(0.25, '', 'imperial', 'SM_2_Avg')).toEqual({ value: 25, unit: '%' });
   });
 
+  it('converts stream water level m → ft in imperial', () => {
+    const c = convertValue(1, 'm', 'imperial', 'Wlvl_1_Avg');
+    expect(c.unit).toBe('ft');
+    expect(c.value).toBeCloseTo(3.28084, 5);
+    expect(convertValue(0.186, 'm', 'metric', 'Wlvl_1_Avg')).toEqual({ value: 0.186, unit: 'm' });
+  });
+
+  it('leaves non-water-level metre values unconverted', () => {
+    expect(convertValue(2, 'm', 'imperial', 'SHF_depth')).toEqual({ value: 2, unit: 'm' });
+  });
+
   it('falls back to passthrough for unknown units', () => {
     expect(convertValue(7, 'W/m²', 'imperial', 'SWin_1_Avg')).toEqual({ value: 7, unit: 'W/m²' });
   });
@@ -86,6 +97,10 @@ describe('formatValue', () => {
   it('gives pressure 2 decimal places', () => {
     expect(formatValue(1013.25, 'P_1_Avg')).toBe('1013.25');
     expect(formatValue(1013.25, 'Psl_1_Avg')).toBe('1013.25');
+  });
+
+  it('gives water level 2 decimal places so small stages do not read as zero', () => {
+    expect(formatValue(0.038, 'Wlvl_1_Avg')).toBe('0.04');
   });
 
   it('defaults to 1 decimal place', () => {

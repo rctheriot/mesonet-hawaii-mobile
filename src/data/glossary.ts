@@ -211,6 +211,39 @@ export const VARIABLE_GLOSSARY: Record<string, GlossaryEntry> = {
     unitNote: 'Displayed in inches/hr (Imperial) or mm/hr (Metric)',
   },
 
+  // ── Water (stream gauges) ─────────────────────────────────────────────────
+  // Stage is measured from each gauge's own reference point, so values are not
+  // comparable between gauges and there is no universal "flood" number — copy
+  // deliberately describes change over time rather than absolute thresholds.
+  Wlvl_1_Avg: {
+    label: 'Water Level',
+    description: 'The height of the stream surface at the gauge, measured from a fixed reference point at that site — not the depth of the stream. Each gauge has its own reference, so compare a gauge with its own recent history rather than with other gauges. A rapid rise, especially during heavy rain, can signal a flash flood.',
+    examplesImperial: [
+      'Steady: normal flow',
+      'Rising a few inches over an hour: stream responding to rain',
+      'Rising sharply within minutes: possible flash flood — stay away from the stream',
+    ],
+    examplesMetric: [
+      'Steady: normal flow',
+      'Rising several cm over an hour: stream responding to rain',
+      'Rising sharply within minutes: possible flash flood — stay away from the stream',
+    ],
+    unitNote: 'Displayed in feet (Imperial) or meters (Metric)',
+  },
+  Twt_1_Avg: {
+    label: 'Water Temperature',
+    description: 'The temperature of the stream water at the gauge. Stream water usually changes temperature more slowly than the air; a sudden shift can mean runoff from rain is entering the stream.',
+    examplesImperial: [
+      '70–80°F: typical tropical stream',
+      'A sudden drop during rain: cooler runoff arriving',
+    ],
+    examplesMetric: [
+      '21–27°C: typical tropical stream',
+      'A sudden drop during rain: cooler runoff arriving',
+    ],
+    unitNote: 'Displayed in °F (Imperial) or °C (Metric)',
+  },
+
   // ── Wind ───────────────────────────────────────────────────────────────────
   WS_1_Avg: {
     label: 'Wind Speed',

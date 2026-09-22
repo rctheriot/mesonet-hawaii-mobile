@@ -21,6 +21,7 @@ interface ReadingsGridProps {
 const PRIORITY_VARS = new Set([
   'Tair_1_Avg', 'RH_1_Avg', 'SWin_1_Avg', 'RF_1_Tot300s',
   'SM_1_Avg', 'Tsoil_1_Avg', 'WS_1_Avg',
+  'Wlvl_1_Avg', 'Twt_1_Avg',
 ]);
 
 // Small info button overlaid on each reading card; opens that variable's glossary entry.
