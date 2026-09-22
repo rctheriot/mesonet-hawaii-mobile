@@ -7,7 +7,7 @@ import type { Measurement, TimeRange } from '../types/api';
 export function useLatestMeasurements(stationId: string | null) {
   return useQuery({
     queryKey: ['measurements', 'latest', stationId],
-    queryFn: () => fetchLatestMeasurements(stationId!),
+    queryFn: ({ signal }) => fetchLatestMeasurements(stationId!, signal),
     enabled: !!stationId,
     staleTime: 1000 * 60 * 2,          // treat cached data as fresh for 2 min
     refetchInterval: 1000 * 60 * 5,    // background re-fetch every 5 min while panel is open
@@ -40,7 +40,7 @@ export function useLatestVarBatch(stationIds: string[], varIds: string[]) {
   );
   return useQuery({
     queryKey: ['measurements', 'latestBatch', stationKey, varKey],
-    queryFn: () => fetchLatestMeasurementsBatch(stationIds, varIds),
+    queryFn: ({ signal }) => fetchLatestMeasurementsBatch(stationIds, varIds, signal),
     select,
     enabled: stationIds.length > 0 && varIds.length > 0,
     staleTime: 1000 * 60 * 2,
@@ -48,22 +48,37 @@ export function useLatestVarBatch(stationIds: string[], varIds: string[]) {
   });
 }
 
+// The 24h rainfall total and the 24h rainfall chart series are the same request:
+// fetchHistoricalMeasurements(id, 'RF_1_Tot300s', '24h'). They used to sit under
+// two different cache keys, so a station detail page showing rainfall issued the
+// identical query twice. Both now share this key — the total is derived from the
+// cached rows with `select`, so no second request is made.
+//
+// Keyed alias rather than call-site discipline: useHistoricalMeasurements maps
+// that exact (variable, range) pair onto this key too, which is self-enforcing.
+function rainfall24hrKey(stationId: string | null) {
+  return ['measurements', 'rainfall24hr', stationId] as const;
+}
+
 // Fetches 24h of RF_1_Tot300s and returns the summed total + raw units.
 // enabled flag lets callers skip the fetch when rainfall isn't relevant.
 export function useRainfall24hr(stationId: string | null, enabled = true) {
   return useQuery({
-    queryKey: ['measurements', 'rainfall24hr', stationId],
-    queryFn: async () => {
-      const data = await fetchHistoricalMeasurements(stationId!, 'RF_1_Tot300s', '24h');
-      const valid = data.filter(m => m.value != null);
-      return {
-        total: valid.reduce((sum, m) => sum + Number(m.value), 0),
-        units: valid[0]?.units ?? 'mm',
-      };
-    },
+    queryKey: rainfall24hrKey(stationId),
+    queryFn: ({ signal }) => fetchHistoricalMeasurements(stationId!, 'RF_1_Tot300s', '24h', signal),
+    select: rainfallTotal,
     enabled: !!stationId && enabled,
     staleTime: 1000 * 60 * 5,
   });
+}
+
+// Sum the 24h rainfall rows into a single total.
+function rainfallTotal(rows: Measurement[]) {
+  const valid = rows.filter(m => m.value != null);
+  return {
+    total: valid.reduce((sum, m) => sum + Number(m.value), 0),
+    units: valid[0]?.units ?? 'mm',
+  };
 }
 
 // Returns a Map<station_id, { value, units }> for the given variable across all stations.
@@ -84,7 +99,7 @@ export function useMapMeasurements(varId: string | null) {
   );
   return useQuery({
     queryKey: ['measurements', 'map', varId],
-    queryFn: () => fetchMapMeasurements(varId!),
+    queryFn: ({ signal }) => fetchMapMeasurements(varId!, signal),
     select,
     enabled: !!varId,
     staleTime: 1000 * 60 * 5,
@@ -106,7 +121,7 @@ export function useMapRainfall24hr(enabled: boolean) {
   );
   return useQuery({
     queryKey: ['measurements', 'map', 'rainfall24hr'],
-    queryFn: fetchMapRainfall24hr,
+    queryFn: ({ signal }) => fetchMapRainfall24hr(signal),
     select,
     enabled,
     staleTime: 1000 * 60 * 10,
@@ -119,9 +134,14 @@ export function useHistoricalMeasurements(
   varId: string | null,
   range: TimeRange
 ) {
+  // 24h rainfall is byte-identical to the request behind useRainfall24hr, so it
+  // shares that hook's cache key instead of duplicating the fetch (see above).
+  const isRainfall24hr = varId === 'RF_1_Tot300s' && range === '24h';
   return useQuery({
-    queryKey: ['measurements', 'historical', stationId, varId, range],
-    queryFn: () => fetchHistoricalMeasurements(stationId!, varId!, range),
+    queryKey: isRainfall24hr
+      ? rainfall24hrKey(stationId)
+      : ['measurements', 'historical', stationId, varId, range],
+    queryFn: ({ signal }) => fetchHistoricalMeasurements(stationId!, varId!, range, signal),
     enabled: !!stationId && !!varId,
     staleTime: 1000 * 60 * 5,
   });
