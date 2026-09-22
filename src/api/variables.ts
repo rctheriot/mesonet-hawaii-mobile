@@ -10,10 +10,11 @@ export interface VariableInfo {
 // used as map modes (e.g. Tair_1_Avg). Fetched once and cached for the session so
 // the high-volume measurement queries can drop the expensive join_metadata flag
 // and source units from here instead.
-export async function fetchVariables(): Promise<Map<string, VariableInfo>> {
+export async function fetchVariables(signal?: AbortSignal): Promise<Map<string, VariableInfo>> {
   const { data } = await apiGet<Record<string, unknown>[] | Record<string, Record<string, unknown>>>(
     '/mesonet/db/variables',
-    { location: REGION.apiLocation, limit: 1000 }
+    { location: REGION.apiLocation, limit: 1000 },
+    signal
   );
   const rows = Array.isArray(data) ? data : Object.values(data);
   const map = new Map<string, VariableInfo>();

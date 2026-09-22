@@ -2,7 +2,7 @@ import { apiGet } from './client';
 import type { Measurement, TimeRange } from '../types/api';
 import { REGION } from '../config/regions';
 
-export async function fetchLatestMeasurements(stationId: string): Promise<Measurement[]> {
+export async function fetchLatestMeasurements(stationId: string, signal?: AbortSignal): Promise<Measurement[]> {
   const { data } = await apiGet<Measurement[] | Record<string, Measurement>>(
     '/mesonet/db/measurements',
     {
@@ -11,7 +11,8 @@ export async function fetchLatestMeasurements(stationId: string): Promise<Measur
       join_metadata: true,
       local_tz: true,
       location: REGION.apiLocation,
-    }
+    },
+    signal
   );
   if (Array.isArray(data)) return data;
   return Object.values(data);
@@ -33,6 +34,7 @@ export async function fetchLatestMeasurements(stationId: string): Promise<Measur
 export async function fetchLatestMeasurementsBatch(
   stationIds: string[],
   varIds: string[],
+  signal?: AbortSignal,
 ): Promise<Map<string, Measurement[]>> {
   const result = new Map<string, Measurement[]>();
   if (stationIds.length === 0 || varIds.length === 0) return result;
@@ -49,7 +51,8 @@ export async function fetchLatestMeasurementsBatch(
       local_tz: true,
       location: REGION.apiLocation,
       limit: 50000, // safety cap only; the date range is the real bound
-    }
+    },
+    signal
   );
   const rows = Array.isArray(data) ? data : Object.values(data);
 
@@ -82,7 +85,7 @@ export async function fetchLatestMeasurementsBatch(
 // a 2h window returns every station that reported recently — verified to cover the
 // same station count as the old limit:2000, at a smaller payload. Stations silent
 // for >2h have no "current" reading and correctly fall off the live map.
-export async function fetchMapMeasurements(varId: string): Promise<Map<string, number>> {
+export async function fetchMapMeasurements(varId: string, signal?: AbortSignal): Promise<Map<string, number>> {
   const now = new Date();
   const start = new Date(now.getTime() - 2 * 60 * 60 * 1000);
   const { data } = await apiGet<Measurement[] | Record<string, Measurement>>(
@@ -93,7 +96,8 @@ export async function fetchMapMeasurements(varId: string): Promise<Map<string, n
       end_date: now.toISOString(),
       location: REGION.apiLocation,
       limit: 50000, // safety cap only; the date range is the real bound
-    }
+    },
+    signal
   );
   const raw = Array.isArray(data) ? data : Object.values(data);
   // Keep the most recent row per station, then reduce to its numeric value.
@@ -116,7 +120,7 @@ export async function fetchMapMeasurements(varId: string): Promise<Map<string, n
 // Sums 24hr of RF_1_Tot300s per station across every station in the region.
 // Returns Map<station_id, total>. join_metadata omitted (this is the heaviest
 // query — ~50k rows; the flag tripled the payload to ~8MB).
-export async function fetchMapRainfall24hr(): Promise<Map<string, number>> {
+export async function fetchMapRainfall24hr(signal?: AbortSignal): Promise<Map<string, number>> {
   const now = new Date();
   const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const { data } = await apiGet<Measurement[] | Record<string, Measurement>>(
@@ -127,7 +131,8 @@ export async function fetchMapRainfall24hr(): Promise<Map<string, number>> {
       end_date: now.toISOString(),
       location: REGION.apiLocation,
       limit: 50000,
-    }
+    },
+    signal
   );
   const rows = Array.isArray(data) ? data : Object.values(data);
   const sums = new Map<string, number>();
@@ -143,7 +148,8 @@ export async function fetchMapRainfall24hr(): Promise<Map<string, number>> {
 export async function fetchHistoricalMeasurements(
   stationId: string,
   varId: string,
-  range: TimeRange
+  range: TimeRange,
+  signal?: AbortSignal
 ): Promise<Measurement[]> {
   const now = new Date();
   const start = new Date(now);
@@ -164,7 +170,8 @@ export async function fetchHistoricalMeasurements(
       local_tz: true,
       location: REGION.apiLocation,
       limit: 10000,             // high limit — 7d of 5-min data ≈ 2016 rows per variable
-    }
+    },
+    signal
   );
   if (Array.isArray(data)) return data;
   return Object.values(data);

@@ -5,7 +5,7 @@ import { fetchVariables } from '../api/variables';
 export function useVariables() {
   return useQuery({
     queryKey: ['variables'],
-    queryFn: fetchVariables,
+    queryFn: ({ signal }) => fetchVariables(signal),
     staleTime: Infinity,
     gcTime: Infinity,
   });

@@ -41,8 +41,8 @@ export function islandFromCoords(lat: number, lng: number): string {
   return islandFromCoordsIn(REGION.subRegions, REGION.regionLabel, lat, lng);
 }
 
-export async function fetchStations(): Promise<Station[]> {
-  const { data } = await apiGet<Station[] | Record<string, Station>>('/mesonet/db/stations', { location: REGION.apiLocation, limit: 1000 });
+export async function fetchStations(signal?: AbortSignal): Promise<Station[]> {
+  const { data } = await apiGet<Station[] | Record<string, Station>>('/mesonet/db/stations', { location: REGION.apiLocation, limit: 1000 }, signal);
   const raw: Station[] = Array.isArray(data) ? data : Object.values(data);
   return raw.map(s => {
     const lat = parseCoord(s.lat);
