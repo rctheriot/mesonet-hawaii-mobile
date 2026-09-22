@@ -16,11 +16,17 @@ interface StationCardProps {
   // into one. May be an empty array (station has no data for the shown variable).
   measurements?: Measurement[];
   rainfallMap?: Map<string, { value: number; units: string }>;
+  // Whether the bulk rainfall query has settled (succeeded or failed). While it is
+  // still in flight `rainfallMap` is undefined for every station, so a card that
+  // keyed its fallback off that alone would fan out one request per visible card
+  // on top of the bulk request. Defaults to false so the fallback stays off unless
+  // a caller explicitly says the bulk result is final.
+  rainfallBulkSettled?: boolean;
   distanceKm?: number;
   onClick: () => void;
 }
 
-export default function StationCard({ station, varId, measurements: providedMeasurements, rainfallMap, distanceKm, onClick }: StationCardProps) {
+export default function StationCard({ station, varId, measurements: providedMeasurements, rainfallMap, rainfallBulkSettled = false, distanceKm, onClick }: StationCardProps) {
   // Only fetch per-station when the caller didn't supply batched data.
   const { data: fetchedMeasurements } = useLatestMeasurements(
     providedMeasurements === undefined ? station.station_id : null
@@ -59,9 +65,12 @@ export default function StationCard({ station, varId, measurements: providedMeas
   const isRainfallSelected = (varId ?? reading?.variable) === 'RF_1_Tot300s';
   // Use bulk map data when available (1 call for all stations); fall back to per-station hook otherwise.
   const mapEntry = rainfallMap?.get(station.station_id);
+  // Only fall back to a per-station fetch once the bulk result is final and this
+  // station genuinely isn't in it — never while the bulk request is still running.
+  const needsFallback = isRainfallSelected && rainfallBulkSettled && !mapEntry;
   const { data: rainfall24hr, isLoading: rainfallLoading } = useRainfall24hr(
     station.station_id,
-    isRainfallSelected && (!rainfallMap || !mapEntry),
+    needsFallback,
   );
   const rainfallRaw = mapEntry
     ? { total: mapEntry.value, units: mapEntry.units }
@@ -69,7 +78,10 @@ export default function StationCard({ station, varId, measurements: providedMeas
   const rainfallConverted = rainfallRaw != null
     ? convertValue(rainfallRaw.total, rainfallRaw.units, settings.units, 'RF_1_Tot300s')
     : null;
-  const isRainfallLoading = isRainfallSelected && !mapEntry && rainfallLoading;
+  // Show the loading state while the bulk request is in flight too, not just the
+  // per-station fallback — otherwise the card reads as "no data" during the wait.
+  const isRainfallLoading =
+    isRainfallSelected && !mapEntry && (!rainfallBulkSettled || rainfallLoading);
 
   const converted = !isRainfallSelected && reading?.value != null
     ? convertValue(Number(reading.value), reading.units ?? '', settings.units, reading.variable)
