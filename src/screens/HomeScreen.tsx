@@ -35,7 +35,6 @@ export default function HomeScreen() {
 
   const { data: stations = [] } = useStations();
   const { coords, loading: geoLoading, requestLocation } = useGeolocation();
-  const { data: rainfallMap, isFetching: rainfallFetching } = useMapRainfall24hr(homeVarId === 'RF_1_Tot300s');
 
   const myStations = useMemo(() => {
     return Array.from(favorites)
@@ -43,6 +42,14 @@ export default function HomeScreen() {
       .filter((s): s is Station => s != null);
   }, [favorites, stations]);
 
+  // Region-wide 24h rainfall is the heaviest query in the app (~50k rows). Only
+  // fetch it when rainfall is the displayed variable AND there is at least one
+  // saved station to render it on — with no favorites the result has no consumer.
+  const {
+    data: rainfallMap,
+    isFetching: rainfallFetching,
+    isPending: rainfallPending,
+  } = useMapRainfall24hr(homeVarId === 'RF_1_Tot300s' && myStations.length > 0);
 
   // One batched request for the displayed variable (+ wind direction when Wind is
   // selected) across all favorites — replaces the old per-station fan-out.
@@ -325,6 +332,7 @@ export default function HomeScreen() {
                       varId={homeVarId}
                       measurements={latestBatch?.get(station.station_id) ?? []}
                       rainfallMap={rainfallMap}
+                      rainfallBulkSettled={!rainfallPending}
                       distanceKm={distanceMap.get(station.station_id)}
                       onClick={() => navigate(`/station/${station.station_id}`)}
                     />
