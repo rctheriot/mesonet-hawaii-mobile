@@ -217,6 +217,7 @@ export default function ExploreScreen() {
               onSortByChange={(v) => updateSettings({ listSortBy: v })}
               islandFilter={listIslandFilter}
               onIslandFilterChange={(v) => updateSettings({ listIslandFilter: v })}
+              dataLoading={dataLoading}
             />
           </div>
         )}

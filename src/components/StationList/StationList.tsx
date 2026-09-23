@@ -6,6 +6,7 @@ import { haversineKm } from '../Map/StationMap';
 import { kmToMiles } from '../../utils/units';
 import type { UnitSystem } from '../../utils/units';
 import { REGION } from '../../config/regions';
+import LoadingBadge from '../LoadingBadge';
 
 const VAR_UNITS: Record<string, { metric: string; imperial: string }> = {
   Tair_1_Avg:   { metric: '°C',   imperial: '°F'   },
@@ -34,11 +35,13 @@ interface StationListProps {
   onSortByChange?: (v: SortBy) => void;
   islandFilter?: string;
   onIslandFilterChange?: (v: string) => void;
+  // Readings for the selected variable are still downloading (first load only).
+  dataLoading?: boolean;
 }
 
 type SortBy = 'alpha' | 'nearme' | 'value';
 
-export default function StationList({ stations, onSelectStation, favorites, coords, requestLocation, geoLoading, geoError, mapMode, varLabels, units = 'metric', sortBy: sortByProp, onSortByChange, islandFilter: islandFilterProp, onIslandFilterChange }: StationListProps) {
+export default function StationList({ stations, onSelectStation, favorites, coords, requestLocation, geoLoading, geoError, mapMode, varLabels, units = 'metric', sortBy: sortByProp, onSortByChange, islandFilter: islandFilterProp, onIslandFilterChange, dataLoading = false }: StationListProps) {
   const [islandFilterLocal, setIslandFilterLocal] = useState<string>('all');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sortByLocal, setSortByLocal] = useState<SortBy>('alpha');
@@ -143,6 +146,12 @@ export default function StationList({ stations, onSelectStation, favorites, coor
           <p className="text-xs text-red-500 dark:text-red-400 mt-1">{geoError}</p>
         )}
       </div>
+
+      {dataLoading && (
+        <div className="flex justify-center py-2">
+          <LoadingBadge />
+        </div>
+      )}
 
       {/* Station rows */}
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-zinc-800">

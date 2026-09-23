@@ -8,6 +8,7 @@ import StationCard from '../components/StationCard';
 import StationMap, { haversineKm } from '../components/Map/StationMap';
 import MapLegend, { type MapMode } from '../components/Map/MapLegend';
 import MapLoadingBadge from '../components/Map/MapLoadingBadge';
+import LoadingBadge from '../components/LoadingBadge';
 import VariableInfoModal from '../components/Glossary/VariableInfoModal';
 import { convertValue } from '../utils/units';
 import { tempToHex, windToHex, rhToHex, rainToHex, smToHex, swToHex } from '../utils/mapColor';
@@ -334,6 +335,11 @@ export default function HomeScreen() {
                       <option value="distance">Distance</option>
                     </select>
                   </div>
+                  {dataLoading && (
+                    <div className="flex justify-center">
+                      <LoadingBadge />
+                    </div>
+                  )}
                   {sortedStations.map(station => (
                     <StationCard
                       key={station.station_id}
