@@ -1,11 +1,11 @@
 const BASE_URL = 'https://api.hcdp.ikewai.org';
 const AUTH_HEADER = `Bearer ${import.meta.env.VITE_MESONET_API_KEY}`;
 
-// Hang backstop, not a latency fix. The HCDP API has a documented slow tail of
-// successful responses (8–42 s observed), so this deliberately sits well above
-// that — its only job is to release a connection a request has stopped using.
-// Aborting nearer the tail would turn slow-but-successful reads into errors.
-const REQUEST_TIMEOUT_MS = 60_000;
+// Hang backstop, not a latency fix. The HCDP API has a slow tail of successful
+// responses (up to 52 s observed on 2026-09-23), so this deliberately sits well
+// above that — its only job is to release a connection a request has stopped
+// using. Aborting nearer the tail would turn slow-but-successful reads into errors.
+const REQUEST_TIMEOUT_MS = 90_000;
 
 export async function apiGet<T = unknown>(
   path: string,

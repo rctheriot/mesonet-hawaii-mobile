@@ -35,15 +35,15 @@ describe('apiGet cancellation', () => {
     await expect(apiGet('/x', undefined, caller.signal)).rejects.toThrow('gone');
   });
 
-  it('releases a hung request after the 60s backstop, and not before', async () => {
+  it('releases a hung request after the 90s backstop, and not before', async () => {
     vi.stubGlobal('fetch', hangingFetch());
     const p = apiGet('/mesonet/db/measurements');
     const settled = vi.fn();
     p.then(settled, settled);
-    // The API's slow-but-successful tail reaches ~44s; those must not become errors.
-    await vi.advanceTimersByTimeAsync(45_000);
+    // The API's slow-but-successful tail has reached 52s; those must not become errors.
+    await vi.advanceTimersByTimeAsync(60_000);
     expect(settled).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(15_000);
+    await vi.advanceTimersByTimeAsync(30_000);
     await expect(p).rejects.toThrow(/timed out/);
   });
 
