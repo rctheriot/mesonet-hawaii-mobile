@@ -144,7 +144,13 @@ export default function HelpModal({ onClose, onInstallApp, initialTab = 'howto' 
                   <h3 className="font-semibold text-slate-800 dark:text-zinc-200">Map view</h3>
                   <p className="text-slate-500 dark:text-zinc-400 leading-relaxed">
                     Use the selector bar to color stations by a measurement like temperature, rainfall, or wind speed.
-                    Tap the crosshair button to center the map on your current location.
+                    {REGION.streamGauges && (
+                      <>
+                        {' '}Choose <span className="font-medium text-slate-700 dark:text-zinc-300">Water Level</span> to highlight the stream gauges; each shows its latest level.
+                        Gauges are also tagged <span className="font-medium text-slate-700 dark:text-zinc-300">Stream gauge</span> in the lists.
+                      </>
+                    )}
+                    {' '}Tap the crosshair button to center the map on your current location.
                     The map stays at your last position when you navigate away and come back.
                   </p>
                 </section>

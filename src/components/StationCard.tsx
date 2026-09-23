@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { LuTriangle } from 'react-icons/lu';
 import { useAppContext } from '../context/AppContext';
-import { useLatestMeasurements, useRainfall24hr } from '../hooks/useMeasurements';
+import { useLatestMeasurements, useRainfall24hr, useStreamGauges } from '../hooks/useMeasurements';
+import StreamGaugeTag from './StreamGaugeTag';
 import { ALLOWED_VARIABLES, convertValue, formatValue, mergeWindReadings, kmToMiles } from '../utils/units';
 import { relativeTime } from '../utils/time';
 import { stationStatusKey, STATUS_DOT } from '../theme';
@@ -34,6 +35,8 @@ export default function StationCard({ station, varId, measurements: providedMeas
   const measurements = providedMeasurements ?? fetchedMeasurements;
   const { settings } = useAppContext();
   const statusKey = stationStatusKey(station);
+  const { data: streamGauges } = useStreamGauges();
+  const isStreamGauge = streamGauges?.has(station.station_id) ?? false;
 
   const allReadings = useMemo(() => {
     if (!measurements) return [];
@@ -102,6 +105,7 @@ export default function StationCard({ station, varId, measurements: providedMeas
         <p className="text-base font-semibold text-slate-900 dark:text-zinc-100 leading-tight">
           {station.full_name ?? station.name ?? station.station_id}
         </p>
+        {isStreamGauge && <div className="mt-1"><StreamGaugeTag /></div>}
         <p className="text-sm text-slate-400 dark:text-zinc-500 mt-0.5 truncate">
           {station.island ?? REGION.regionLabel}
           {distanceKm != null && (

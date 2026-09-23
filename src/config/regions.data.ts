@@ -47,6 +47,12 @@ export interface RegionConfig {
   subRegions: SubRegion[];
   /** Subdirectory of `public/` holding this region's icons; becomes Vite's publicDir. */
   assetDir: string;
+  /**
+   * Whether the network has stream gauges worth surfacing: adds a Water Level map
+   * mode and a "Stream gauge" tag in the lists. Gauges themselves are found from
+   * the data (stations reporting Wlvl_1_Avg), not listed here.
+   */
+  streamGauges: boolean;
   links: {
     mesonetUrl: string;
     /** Display text for mesonetUrl (the bare host+path, not the full URL). */
@@ -128,6 +134,8 @@ export const REGIONS: Record<string, RegionConfig> = {
       },
     ],
     assetDir: 'hawaii',
+    // Only Hoʻolawa (0157) reports water level — not enough to earn a map mode.
+    streamGauges: false,
     links: {
       ...HCDP_LINKS,
       networkBlurb:
@@ -171,6 +179,7 @@ export const REGIONS: Record<string, RegionConfig> = {
       },
     ],
     assetDir: 'american_samoa',
+    streamGauges: true,
     links: {
       ...HCDP_LINKS,
       networkBlurb:

@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchLatestMeasurements, fetchLatestMeasurementsBatch, fetchHistoricalMeasurements, fetchMapMeasurements, fetchMapRainfall24hr } from '../api/measurements';
+import { fetchLatestMeasurements, fetchLatestMeasurementsBatch, fetchHistoricalMeasurements, fetchMapMeasurements, fetchMapRainfall24hr, fetchStreamGaugeIds } from '../api/measurements';
+import { REGION } from '../config/regions';
 import { useVariables } from './useVariables';
 import type { Measurement, TimeRange } from '../types/api';
 
@@ -108,6 +109,19 @@ export function useMapMeasurements(varId: string | null) {
 }
 
 // Sums 24hr of RF_1_Tot300s per station across every station in the region.
+// Set of station ids that are stream gauges (see fetchStreamGaugeIds). Only runs
+// for regions with REGION.streamGauges. Being a gauge is a property of the
+// station, not a live reading, so it is cached for an hour and never polled.
+// It only adds tags, so callers should not treat its loading state as blocking.
+export function useStreamGauges() {
+  return useQuery({
+    queryKey: ['measurements', 'streamGauges'],
+    queryFn: ({ signal }) => fetchStreamGaugeIds(signal),
+    enabled: REGION.streamGauges,
+    staleTime: 1000 * 60 * 60,
+  });
+}
+
 export function useMapRainfall24hr(enabled: boolean) {
   const { data: variables } = useVariables();
   const units = variables?.get('RF_1_Tot300s')?.units || 'mm';

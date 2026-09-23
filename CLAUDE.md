@@ -99,7 +99,9 @@ Thin shell: sets up `QueryClientProvider`, `AppProvider`, and `BrowserRouter`, t
 - Selected station uses `selectedPinIcon` from `mapIcons.ts` (sky blue pin). Marker positions are jittered via `stationJitter()` (exported, also reused by `StationLocationMap`).
 - Leaflet requires `map.invalidateSize()` after a hidden→visible transition — called in a `useEffect` watching `isVisible`, and also debounced when `panelHeight` changes.
 - Variable coloring mode: when a map variable is selected, markers show colored pill labels via `stationDivIcon()`. Stations with no data get a gray dot. `MapLegend.tsx` renders the color scale bottom-left.
-- Map modes defined as `MapMode` type in `StationMap.tsx`: `status` | variable standard_names (e.g. `Tair_1_Avg`, `WS_1_Avg`).
+- Map modes defined as `MapMode` type in `MapLegend.tsx`: `status` | variable standard_names (e.g. `Tair_1_Avg`, `WS_1_Avg`). The Station Network's options come from `mapModeOptions(region)` in `Map/mapModes.ts`.
+- **Water Level** (`Wlvl_1_Avg`) is offered only where `REGION.streamGauges` is true (American Samoa). Each gauge measures from its own reference point, so levels are **not comparable between gauges**: markers use one solid colour (`WATER_LEVEL_HEX`) with the value on the pill, not a ramp, and the list's "By Value" sort is disabled in this mode. Don't add a colour scale for it.
+- **Stream gauges** are identified from data, not config: the API has no station-type field and names are inconsistent (only 1417 says "stream gauge"). `useStreamGauges()` returns the stations that reported `Wlvl_1_Avg` in the last 7 days, and `StationList`/`StationCard` show a "Stream gauge" tag for them. It only runs when `REGION.streamGauges` is true.
 - `maxBounds` comes from `REGION.mapMaxBounds` with `maxBoundsViscosity: 1.0`. This was a hardcoded Hawaii box and silently snapped other regions' maps into the mid-Pacific — if a region's map won't sit where you set `mapCenter`, check this first.
 
 ### StationDetail (full-page station view)
@@ -181,7 +183,8 @@ What `RegionConfig` covers — if you find one of these hardcoded, move it here:
 `apiLocation`, `appName`/`shortName`/`description`, `regionLabel` (the fallback shown when a
 station matches no sub-region box), `mapCenter`/`mapZoom`, `geoBounds` (Near Me validity) and
 `geoOutsideMessage`, `mapMaxBounds` (Leaflet pan clamp — kept separate from `geoBounds` so the pan
-limit can be looser), `subRegions`, `assetDir`, and `links` (Help → About).
+limit can be looser), `subRegions`, `assetDir`, `streamGauges` (Water Level map mode + gauge tags),
+and `links` (Help → About).
 
 ### Sub-regions (island names)
 The API has no `island` field, so island names are derived from lat/lng boxes in

@@ -173,6 +173,33 @@ export async function fetchMapMeasurements(varId: string, signal?: AbortSignal):
   return out;
 }
 
+// Station ids that reported water level (Wlvl_1_Avg) in the last 7 days — i.e.
+// the region's stream gauges. The API has no station-type field, so this is the
+// only reliable signal (station names don't say "stream gauge" consistently).
+// 7 days, the furthest the app looks back anywhere, so a gauge that has been
+// quiet for a day or two keeps its tag.
+const GAUGE_WINDOW_HOURS = 7 * 24;
+
+export async function fetchStreamGaugeIds(signal?: AbortSignal): Promise<Set<string>> {
+  const now = new Date();
+  const start = new Date(now.getTime() - GAUGE_WINDOW_HOURS * HOUR_MS);
+  const limit = rowLimit(MAX_REGION_STATIONS, 1, GAUGE_WINDOW_HOURS);
+  const { data } = await apiGet<Measurement[] | Record<string, Measurement>>(
+    '/mesonet/db/measurements',
+    {
+      var_ids: 'Wlvl_1_Avg',
+      start_date: start.toISOString(),
+      end_date: now.toISOString(),
+      location: REGION.apiLocation,
+      limit,
+    },
+    signal
+  );
+  const rows = toRows(data);
+  warnIfTruncated(rows, limit, 'stream gauges');
+  return new Set(rows.map(m => m.station_id));
+}
+
 // Sums 24hr of RF_1_Tot300s per station across every station in the region.
 // Returns Map<station_id, total>. join_metadata omitted (this is the heaviest
 // query — ~21k rows for Hawaii; the flag tripled the payload to ~8MB). Truncation

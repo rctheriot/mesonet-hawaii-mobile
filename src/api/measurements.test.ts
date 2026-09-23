@@ -6,6 +6,7 @@ import {
   fetchMapRainfall24hr,
   fetchLatestMeasurementsBatch,
   fetchHistoricalMeasurements,
+  fetchStreamGaugeIds,
   rowLimit,
 } from './measurements';
 
@@ -197,6 +198,31 @@ describe('fetchMapMeasurements window', () => {
     const params = lastParams();
     expect(windowHours(params)).toBe(2);
     expect(params.limit).toBeGreaterThanOrEqual(200 * 2 * 12);
+  });
+});
+
+describe('fetchStreamGaugeIds', () => {
+  it('returns the set of stations that reported water level', async () => {
+    mockApiGet.mockResolvedValue({
+      data: [
+        { station_id: '1417', variable: 'Wlvl_1_Avg', value: '0.03', timestamp: 't1' },
+        { station_id: '1417', variable: 'Wlvl_1_Avg', value: '0.04', timestamp: 't2' },
+        { station_id: '1411', variable: 'Wlvl_1_Avg', value: '0.88', timestamp: 't1' },
+      ],
+    });
+    const ids = await fetchStreamGaugeIds();
+    expect([...ids].sort()).toEqual(['1411', '1417']);
+  });
+
+  it('queries only water level over 7 days with a limit that covers the window', async () => {
+    mockApiGet.mockResolvedValue({ data: [] });
+    await fetchStreamGaugeIds();
+    const params = lastParams();
+    expect(params.var_ids).toBe('Wlvl_1_Avg');
+    expect('station_ids' in params).toBe(false);
+    expect('join_metadata' in params).toBe(false);
+    expect(windowHours(params)).toBeCloseTo(168, 1);
+    expect(params.limit).toBe(rowLimit(300, 1, 168));
   });
 });
 
