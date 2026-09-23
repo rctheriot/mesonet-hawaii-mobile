@@ -55,10 +55,9 @@ export default function HomeScreen() {
     isError: rainfallError,
   } = useMapRainfall24hr(homeVarId === 'RF_1_Tot300s' && favorites.size > 0);
 
-  // "Settled" must be derived from the result, not from query status: the hook
-  // withholds values until /variables resolves, so the query can be status
-  // 'success' while rainfallMap is still undefined. Keying off status there would
-  // let every card start a fallback request again.
+  // "Settled" is derived from the result (data present, or the request failed)
+  // rather than from query status, so it means exactly what StationCard needs:
+  // the bulk answer is final. Until then no card starts its own fallback request.
   const rainfallBulkSettled = rainfallMap != null || rainfallError;
 
   // One batched request for the displayed variable (+ wind direction when Wind is
