@@ -87,3 +87,9 @@ const RAIN_STOPS: ColorStop[] = [
 export function rainToHex(mm: number): string { return stopsToHex(RAIN_STOPS, mm); }
 export const RAIN_RANGE_MM = { min: RAIN_STOPS[0].t, max: RAIN_STOPS[RAIN_STOPS.length - 1].t };
 export const RAIN_GRADIENT_CSS = stopsToCss(RAIN_STOPS);
+
+// Water level: one solid colour, not a ramp. Each gauge measures from its own
+// reference point, so levels are not comparable between gauges — a colour scale
+// would imply a comparison the data can't support. The value is on the pill.
+// Darker than the sky-blue selected-station pin so the two aren't confused.
+export const WATER_LEVEL_HEX = '#1d4ed8';

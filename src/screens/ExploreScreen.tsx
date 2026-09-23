@@ -12,27 +12,23 @@ import { useStations } from '../hooks/useStations';
 import { useMapMeasurements, useMapRainfall24hr } from '../hooks/useMeasurements';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useAppContext } from '../context/AppContext';
-import { convertValue } from '../utils/units';
-import { tempToHex, windToHex, rhToHex, rainToHex, smToHex, swToHex } from '../utils/mapColor';
+import { convertValue, formatValue } from '../utils/units';
+import { REGION } from '../config/regions';
+import { tempToHex, windToHex, rhToHex, rainToHex, smToHex, swToHex, WATER_LEVEL_HEX } from '../utils/mapColor';
+import { mapModeOptions } from '../components/Map/mapModes';
 
 type View = 'map' | 'list';
 
-const MAP_MODE_OPTIONS: { mode: MapMode; label: string }[] = [
-  { mode: 'status',        label: 'Status'         },
-  { mode: 'Tair_1_Avg',   label: 'Air Temp'       },
-  { mode: 'RH_1_Avg',     label: 'Humidity'       },
-  { mode: 'SWin_1_Avg',   label: 'Radiation'      },
-  { mode: 'RF_1_Tot300s', label: 'Rainfall (24hr)'},
-  { mode: 'SM_1_Avg',     label: 'Soil Moisture'  },
-  { mode: 'Tsoil_1_Avg',  label: 'Soil Temp'      },
-  { mode: 'WS_1_Avg',     label: 'Wind'           },
-];
+const MAP_MODE_OPTIONS = mapModeOptions(REGION);
 
 export default function ExploreScreen() {
   const navigate = useNavigate();
   const { settings, updateSettings, favorites, openInstallPrompt } = useAppContext();
   const { darkMode, view, mapLat, mapLng, mapZoom, listSortBy, listIslandFilter } = settings;
-  const mapMode = settings.mapMode as MapMode;
+  // A saved mode this region doesn't offer (e.g. from another build) falls back to status.
+  const mapMode: MapMode = MAP_MODE_OPTIONS.some(o => o.mode === settings.mapMode)
+    ? settings.mapMode as MapMode
+    : 'status';
   const setMapMode = (mode: MapMode) => updateSettings({ mapMode: mode });
 
   const [helpOpen, setHelpOpen]         = useState(false);
@@ -63,6 +59,7 @@ export default function ExploreScreen() {
       else if (mapMode === 'RH_1_Avg')    color = rhToHex(value);
       else if (mapMode === 'SM_1_Avg')    color = smToHex(value);
       else if (mapMode === 'SWin_1_Avg')  color = swToHex(value);
+      else if (mapMode === 'Wlvl_1_Avg')  color = WATER_LEVEL_HEX;
       else                                color = rainToHex(value);
       map.set(id, color);
     }
@@ -83,6 +80,8 @@ export default function ExploreScreen() {
       const { value: converted } = convertValue(value, rawUnits, settings.units, mapMode);
       const label = mapMode === 'RF_1_Tot300s'
         ? converted.toFixed(settings.units === 'imperial' ? 2 : 1)
+        : mapMode === 'Wlvl_1_Avg'
+        ? formatValue(converted, mapMode)
         : String(Math.round(converted));
       map.set(id, label);
     }
@@ -217,6 +216,7 @@ export default function ExploreScreen() {
               onSortByChange={(v) => updateSettings({ listSortBy: v })}
               islandFilter={listIslandFilter}
               onIslandFilterChange={(v) => updateSettings({ listIslandFilter: v })}
+              dataLoading={dataLoading}
             />
           </div>
         )}

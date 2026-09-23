@@ -6,6 +6,9 @@ import { haversineKm } from '../Map/StationMap';
 import { kmToMiles } from '../../utils/units';
 import type { UnitSystem } from '../../utils/units';
 import { REGION } from '../../config/regions';
+import LoadingBadge from '../LoadingBadge';
+import StreamGaugeTag from '../StreamGaugeTag';
+import { useStreamGauges } from '../../hooks/useMeasurements';
 
 const VAR_UNITS: Record<string, { metric: string; imperial: string }> = {
   Tair_1_Avg:   { metric: '°C',   imperial: '°F'   },
@@ -15,7 +18,13 @@ const VAR_UNITS: Record<string, { metric: string; imperial: string }> = {
   RF_1_Tot300s: { metric: 'mm',   imperial: 'in'   },
   SM_1_Avg:     { metric: '%',    imperial: '%'    },
   WS_1_Avg:     { metric: 'm/s',  imperial: 'mph'  },
+  Wlvl_1_Avg:   { metric: 'm',    imperial: 'ft'   },
 };
+
+// Variables whose values can't be ranked across stations. Water level is measured
+// from each gauge's own reference point, so "By Value" would order by datum, not
+// by how high the water is.
+const UNSORTABLE_VARS = new Set(['Wlvl_1_Avg']);
 
 interface StationListProps {
   stations: Station[];
@@ -34,11 +43,13 @@ interface StationListProps {
   onSortByChange?: (v: SortBy) => void;
   islandFilter?: string;
   onIslandFilterChange?: (v: string) => void;
+  // Readings for the selected variable are still downloading (first load only).
+  dataLoading?: boolean;
 }
 
 type SortBy = 'alpha' | 'nearme' | 'value';
 
-export default function StationList({ stations, onSelectStation, favorites, coords, requestLocation, geoLoading, geoError, mapMode, varLabels, units = 'metric', sortBy: sortByProp, onSortByChange, islandFilter: islandFilterProp, onIslandFilterChange }: StationListProps) {
+export default function StationList({ stations, onSelectStation, favorites, coords, requestLocation, geoLoading, geoError, mapMode, varLabels, units = 'metric', sortBy: sortByProp, onSortByChange, islandFilter: islandFilterProp, onIslandFilterChange, dataLoading = false }: StationListProps) {
   const [islandFilterLocal, setIslandFilterLocal] = useState<string>('all');
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sortByLocal, setSortByLocal] = useState<SortBy>('alpha');
@@ -68,8 +79,14 @@ export default function StationList({ stations, onSelectStation, favorites, coor
     });
   }, [stations, islandFilter, favoritesOnly, favorites]);
 
+  const { data: streamGauges } = useStreamGauges();
+
+  // Not written back to the saved sort: switching to another variable restores it.
+  const valueSortable = !mapMode || !UNSORTABLE_VARS.has(mapMode);
+  const effectiveSortBy: SortBy = sortBy === 'value' && !valueSortable ? 'alpha' : sortBy;
+
   const sorted = useMemo(() => {
-    if (sortBy === 'nearme' && coords) {
+    if (effectiveSortBy === 'nearme' && coords) {
       return [...filtered].sort((a, b) => {
         if (!a.lat || !a.lng) return 1;
         if (!b.lat || !b.lng) return -1;
@@ -77,7 +94,7 @@ export default function StationList({ stations, onSelectStation, favorites, coor
              - haversineKm(coords.latitude, coords.longitude, b.lat, b.lng);
       });
     }
-    if (sortBy === 'value' && varLabels) {
+    if (effectiveSortBy === 'value' && varLabels) {
       return [...filtered].sort((a, b) => {
         const av = parseFloat(varLabels.get(a.station_id) ?? '');
         const bv = parseFloat(varLabels.get(b.station_id) ?? '');
@@ -91,7 +108,7 @@ export default function StationList({ stations, onSelectStation, favorites, coor
     return [...filtered].sort((a, b) =>
       (a.full_name ?? a.name ?? '').localeCompare(b.full_name ?? b.name ?? '')
     );
-  }, [filtered, sortBy, coords, varLabels]);
+  }, [filtered, effectiveSortBy, coords, varLabels]);
 
   return (
     <div className="absolute inset-0 flex flex-col bg-white dark:bg-zinc-950">
@@ -126,7 +143,7 @@ export default function StationList({ stations, onSelectStation, favorites, coor
 
           {/* Sort */}
           <select
-            value={sortBy}
+            value={effectiveSortBy}
             onChange={e => {
               const val = e.target.value as SortBy;
               if (val === 'nearme' && !coords) requestLocation();
@@ -136,13 +153,19 @@ export default function StationList({ stations, onSelectStation, favorites, coor
           >
             <option value="alpha">A–Z</option>
             <option value="nearme">{geoLoading ? 'Locating…' : 'Distance'}</option>
-            <option value="value">By Value</option>
+            <option value="value" disabled={!valueSortable}>By Value</option>
           </select>
         </div>
         {geoError && sortBy === 'nearme' && (
           <p className="text-xs text-red-500 dark:text-red-400 mt-1">{geoError}</p>
         )}
       </div>
+
+      {dataLoading && (
+        <div className="flex justify-center py-2">
+          <LoadingBadge />
+        </div>
+      )}
 
       {/* Station rows */}
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-zinc-800">
@@ -175,6 +198,7 @@ export default function StationList({ stations, onSelectStation, favorites, coor
                   <span className="text-base font-medium text-slate-900 dark:text-zinc-100 truncate">
                     {station.full_name ?? station.name ?? station.station_id}
                   </span>
+                  {streamGauges?.has(station.station_id) && <StreamGaugeTag />}
                 </div>
                 <div className="text-sm text-slate-400 dark:text-zinc-500">
                   {station.island ?? REGION.regionLabel}

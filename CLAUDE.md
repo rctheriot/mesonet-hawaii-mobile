@@ -67,13 +67,16 @@ See **Multi-Region Configuration** below before touching anything region-specifi
 - **HTTP client:** Native `fetch` via `apiGet<T>(path, params?)` in `src/api/client.ts`. Returns `{ data: T }`. Never use axios.
 - **Key endpoints:**
   - `GET /mesonet/db/stations?location=<REGION.apiLocation>&limit=1000` — all stations
-  - `GET /mesonet/db/measurements?station_ids=&limit=50&join_metadata=true&local_tz=true&location=<REGION.apiLocation>` — latest readings
+  - `GET /mesonet/db/measurements?station_ids=&start_date=<now-7d>&end_date=<now>&limit=1000&join_metadata=true&local_tz=true&location=<REGION.apiLocation>` — latest readings (see the fetching strategy below)
   - `GET /mesonet/db/variables?location=<REGION.apiLocation>&limit=1000` — variable metadata (standard_name, display_name, units). Fetched once and cached for the session via `useVariables`/`fetchVariables`; supplies units to the bulk map queries so they can omit `join_metadata`.
   - The `stationMonitor` endpoint was previously used to derive status but is no longer called — status now comes straight from the `stations` payload (see Status System).
 - **Field names:** stations use `lat`/`lng` (not latitude/longitude). Measurements use `variable` (not `var_id`), `variable_display_name`, `value` (may be string, cast with `Number()`).
 - **Measurement-fetching strategy (perf):**
   - Bulk map queries (`fetchMapMeasurements`, `fetchMapRainfall24hr`) **omit `join_metadata`** — it repeats identical station/variable metadata on every row (~4x payload; ~8MB→2.25MB for rainfall). Units come from the cached `/variables` endpoint, attached in the hook via `select`.
-  - All multi-station measurement queries use **date ranges, not row limits** (`limit` is kept only as a high safety cap). `fetchMapMeasurements` uses a 2h window (covers every recently-reporting station at a smaller payload than the old `limit:2000`, with no global-ordering starvation); `fetchMapRainfall24hr` and the favorites batch use 24h. Single-station `fetchLatestMeasurements` deliberately keeps `limit` so a stale station's detail page still shows its last reading regardless of age.
+  - **Every measurement query sends a date range fitted to what its screen shows, plus an explicit `limit` that must never bite.** The API returns rows **newest-first**, and with no `limit` it **silently stops at 10,000 rows** — dropping the *oldest* rows with no error (an undercounted 24h rainfall total, a clipped 7d chart). Explicit limits are honoured (tested up to 1,000,000). Limits are computed by `rowLimit(stations, variables, hours)` in `src/api/measurements.ts` (5-min reports × 2 headroom); region-wide queries size for `MAX_REGION_STATIONS` (300). In dev, a response that fills its limit logs a `console.warn`.
+  - Windows: `fetchMapMeasurements` 2h (covers every recently-reporting station; stations silent >2h fall off the live map); `fetchMapRainfall24hr` and the favorites batch 24h; history exactly 6h/24h/3d/7d.
+  - **Nothing looks back more than 7 days** — the 7d chart is the furthest the app goes. Single-station `fetchLatestMeasurements` uses a 7-day window with `limit: 1000`: rows come newest-first and all variables in a report share a timestamp, so 1000 rows is the station's last ~45 min even at the widest station (~107 variables). That catches variables reporting every 10–15 min, while ones that pause for hours (e.g. albedo overnight) stay out rather than showing stale as current. A station silent for >7 days shows no current readings.
+  - Date ranges are for **correctness, not speed**: interleaved timings showed the server's stalls hit ranged and unranged queries equally.
   - HomeScreen favorites use **one batched request** (`fetchLatestMeasurementsBatch` / `useLatestVarBatch`) for the displayed variable (+ `WDrs_1_Avg` for Wind), not a per-station fan-out. It also **omits `join_metadata`** — units are attached from the cached `/variables` metadata in the hook via `select`. (`StationCard` only needs `units` from the join; `variable_display_name` is used solely in the `varId === null` auto-select path, which HomeScreen never hits, and wind merging keys off the variable id.)
   - The batch uses a **24h date range, not a row `limit`**. A shared limit is split across the requested stations, so with few favorites each pulls many hours of useless history (and a small limit would instead starve stations whose latest reading is older). A date range fetches only the recent window per station regardless of count; 24h matches the staleness threshold so no non-stale favorite is dropped.
 - **Sensor-number normalization:** `VariableInfoModal` strips sensor numbers (`_2_`/`_3_` → `_1_`) as a fallback so sensors 2–4 still resolve a glossary entry when their exact ID isn't defined.
@@ -96,7 +99,9 @@ Thin shell: sets up `QueryClientProvider`, `AppProvider`, and `BrowserRouter`, t
 - Selected station uses `selectedPinIcon` from `mapIcons.ts` (sky blue pin). Marker positions are jittered via `stationJitter()` (exported, also reused by `StationLocationMap`).
 - Leaflet requires `map.invalidateSize()` after a hidden→visible transition — called in a `useEffect` watching `isVisible`, and also debounced when `panelHeight` changes.
 - Variable coloring mode: when a map variable is selected, markers show colored pill labels via `stationDivIcon()`. Stations with no data get a gray dot. `MapLegend.tsx` renders the color scale bottom-left.
-- Map modes defined as `MapMode` type in `StationMap.tsx`: `status` | variable standard_names (e.g. `Tair_1_Avg`, `WS_1_Avg`).
+- Map modes defined as `MapMode` type in `MapLegend.tsx`: `status` | variable standard_names (e.g. `Tair_1_Avg`, `WS_1_Avg`). The Station Network's options come from `mapModeOptions(region)` in `Map/mapModes.ts`.
+- **Water Level** (`Wlvl_1_Avg`) is offered only where `REGION.streamGauges` is true (American Samoa). Each gauge measures from its own reference point, so levels are **not comparable between gauges**: markers use one solid colour (`WATER_LEVEL_HEX`) with the value on the pill, not a ramp, and the list's "By Value" sort is disabled in this mode. Don't add a colour scale for it.
+- **Stream gauges** are identified from data, not config: the API has no station-type field and names are inconsistent (only 1417 says "stream gauge"). `useStreamGauges()` returns the stations that reported `Wlvl_1_Avg` in the last 7 days, and `StationList`/`StationCard` show a "Stream gauge" tag for them. It only runs when `REGION.streamGauges` is true.
 - `maxBounds` comes from `REGION.mapMaxBounds` with `maxBoundsViscosity: 1.0`. This was a hardcoded Hawaii box and silently snapped other regions' maps into the mid-Pacific — if a region's map won't sit where you set `mapCenter`, check this first.
 
 ### StationDetail (full-page station view)
@@ -178,7 +183,8 @@ What `RegionConfig` covers — if you find one of these hardcoded, move it here:
 `apiLocation`, `appName`/`shortName`/`description`, `regionLabel` (the fallback shown when a
 station matches no sub-region box), `mapCenter`/`mapZoom`, `geoBounds` (Near Me validity) and
 `geoOutsideMessage`, `mapMaxBounds` (Leaflet pan clamp — kept separate from `geoBounds` so the pan
-limit can be looser), `subRegions`, `assetDir`, and `links` (Help → About).
+limit can be looser), `subRegions`, `assetDir`, `streamGauges` (Water Level map mode + gauge tags),
+and `links` (Help → About).
 
 ### Sub-regions (island names)
 The API has no `island` field, so island names are derived from lat/lng boxes in
@@ -201,8 +207,8 @@ set the PWA manifest `name`/`short_name`/`description`; substitute `%VITE_APP_NA
 `%VITE_APP_DESCRIPTION%` in `index.html`; and point Vite's `publicDir` at `public/<assetDir>/` so
 each region ships its own icons. `public/README.md` documents the required files.
 
-> Each region's icons are the shared droplet mark with that region's flag badged into the
-> upper-left. Save them as **opaque RGB, not RGBA** — iOS renders a transparent
+> Each region's icons are the shared droplet mark in that region's colour (Hawaii blue,
+> American Samoa red). Save them as **opaque RGB, not RGBA** — iOS renders a transparent
 > `apple-touch-icon.png` against black.
 
 ### Dev scripts

@@ -5,6 +5,7 @@ import {
   SM_RANGE,       SM_GRADIENT_CSS,
   SW_RANGE,       SW_GRADIENT_CSS,
   RAIN_RANGE_MM,  RAIN_GRADIENT_CSS,
+  WATER_LEVEL_HEX,
 } from '../../utils/mapColor';
 import { convertValue } from '../../utils/units';
 import type { UnitSystem } from '../../utils/units';
@@ -17,7 +18,8 @@ export type MapMode =
   | 'RF_1_Tot300s'
   | 'Tsoil_1_Avg'
   | 'SM_1_Avg'
-  | 'SWin_1_Avg';
+  | 'SWin_1_Avg'
+  | 'Wlvl_1_Avg';
 
 interface MapLegendProps {
   mode: MapMode;
@@ -123,6 +125,24 @@ export default function MapLegend({ mode, units }: MapLegendProps) {
             <span>{label}</span>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  // Water level is categorical (gauge / not a gauge), not a ramp — see WATER_LEVEL_HEX.
+  if (mode === 'Wlvl_1_Avg') {
+    return (
+      <div className="absolute bottom-3 left-3 z-[1001] bg-white/90 dark:bg-zinc-800/90 backdrop-blur rounded-xl px-3 py-2 shadow border border-slate-200 dark:border-zinc-700 text-xs text-slate-700 dark:text-zinc-300 w-40">
+        <p className="font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wide text-[10px] mb-1">Water Level</p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span style={{ background: WATER_LEVEL_HEX }} className="w-2.5 h-2.5 rounded-sm flex-shrink-0" />
+          <span>Stream gauge</span>
+        </div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span style={{ background: '#94a3b8' }} className="w-2.5 h-2.5 rounded-full flex-shrink-0" />
+          <span>No water level</span>
+        </div>
+        <p className="mt-1 text-[10px] leading-snug text-slate-500 dark:text-zinc-400">Each gauge has its own reference point</p>
       </div>
     );
   }

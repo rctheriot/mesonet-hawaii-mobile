@@ -8,6 +8,7 @@ import StationCard from '../components/StationCard';
 import StationMap, { haversineKm } from '../components/Map/StationMap';
 import MapLegend, { type MapMode } from '../components/Map/MapLegend';
 import MapLoadingBadge from '../components/Map/MapLoadingBadge';
+import LoadingBadge from '../components/LoadingBadge';
 import VariableInfoModal from '../components/Glossary/VariableInfoModal';
 import { convertValue } from '../utils/units';
 import { tempToHex, windToHex, rhToHex, rainToHex, smToHex, swToHex } from '../utils/mapColor';
@@ -35,7 +36,6 @@ export default function HomeScreen() {
 
   const { data: stations = [] } = useStations();
   const { coords, loading: geoLoading, requestLocation } = useGeolocation();
-  const { data: rainfallMap, isFetching: rainfallFetching } = useMapRainfall24hr(homeVarId === 'RF_1_Tot300s');
 
   const myStations = useMemo(() => {
     return Array.from(favorites)
@@ -43,6 +43,23 @@ export default function HomeScreen() {
       .filter((s): s is Station => s != null);
   }, [favorites, stations]);
 
+  // Region-wide 24h rainfall is the heaviest query in the app (~21k rows for Hawaii). Only
+  // fetch it when rainfall is the displayed variable AND the user has at least one
+  // saved station to render it on — with no favorites the result has no consumer.
+  //
+  // Gated on `favorites` (read synchronously from localStorage), not on
+  // myStations: myStations is favorites ∩ stations, so gating on it would make
+  // this query wait for the station list instead of running alongside it.
+  const {
+    data: rainfallMap,
+    isFetching: rainfallFetching,
+    isError: rainfallError,
+  } = useMapRainfall24hr(homeVarId === 'RF_1_Tot300s' && favorites.size > 0);
+
+  // "Settled" is derived from the result (data present, or the request failed)
+  // rather than from query status, so it means exactly what StationCard needs:
+  // the bulk answer is final. Until then no card starts its own fallback request.
+  const rainfallBulkSettled = rainfallMap != null || rainfallError;
 
   // One batched request for the displayed variable (+ wind direction when Wind is
   // selected) across all favorites — replaces the old per-station fan-out.
@@ -318,6 +335,11 @@ export default function HomeScreen() {
                       <option value="distance">Distance</option>
                     </select>
                   </div>
+                  {dataLoading && (
+                    <div className="flex justify-center">
+                      <LoadingBadge />
+                    </div>
+                  )}
                   {sortedStations.map(station => (
                     <StationCard
                       key={station.station_id}
@@ -325,6 +347,7 @@ export default function HomeScreen() {
                       varId={homeVarId}
                       measurements={latestBatch?.get(station.station_id) ?? []}
                       rainfallMap={rainfallMap}
+                      rainfallBulkSettled={rainfallBulkSettled}
                       distanceKm={distanceMap.get(station.station_id)}
                       onClick={() => navigate(`/station/${station.station_id}`)}
                     />
