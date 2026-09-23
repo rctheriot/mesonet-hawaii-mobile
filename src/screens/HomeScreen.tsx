@@ -43,7 +43,7 @@ export default function HomeScreen() {
       .filter((s): s is Station => s != null);
   }, [favorites, stations]);
 
-  // Region-wide 24h rainfall is the heaviest query in the app (~50k rows). Only
+  // Region-wide 24h rainfall is the heaviest query in the app (~21k rows for Hawaii). Only
   // fetch it when rainfall is the displayed variable AND the user has at least one
   // saved station to render it on — with no favorites the result has no consumer.
   //
