@@ -14,9 +14,8 @@ folders so it is never copied into `dist/`.
 
 ## Artwork
 
-Each region's set is the shared droplet mark with that region's flag as a rounded
-badge in the upper-left (36% of icon width, 5% margin — clears the droplet at every
-size). Save them as **opaque RGB, not RGBA**: iOS renders a transparent
+Each region's set is the shared droplet mark in that region's colour (Hawaii blue,
+American Samoa red) on a white background. Save them as **opaque RGB, not RGBA**: iOS renders a transparent
 `apple-touch-icon.png` against black.
 
 To add a region, create `public/<assetDir>/` with all four files and set `assetDir`

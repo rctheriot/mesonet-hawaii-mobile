@@ -204,8 +204,8 @@ set the PWA manifest `name`/`short_name`/`description`; substitute `%VITE_APP_NA
 `%VITE_APP_DESCRIPTION%` in `index.html`; and point Vite's `publicDir` at `public/<assetDir>/` so
 each region ships its own icons. `public/README.md` documents the required files.
 
-> Each region's icons are the shared droplet mark with that region's flag badged into the
-> upper-left. Save them as **opaque RGB, not RGBA** — iOS renders a transparent
+> Each region's icons are the shared droplet mark in that region's colour (Hawaii blue,
+> American Samoa red). Save them as **opaque RGB, not RGBA** — iOS renders a transparent
 > `apple-touch-icon.png` against black.
 
 ### Dev scripts
