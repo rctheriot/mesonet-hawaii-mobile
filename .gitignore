@@ -25,3 +25,6 @@ deploy.sh
 *.njsproj
 *.sln
 *.sw?
+
+# Local audit notes
+audit/
