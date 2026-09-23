@@ -28,3 +28,6 @@ deploy.sh
 
 # Local audit notes
 audit/
+
+# Local tools (not committed)
+tools/
