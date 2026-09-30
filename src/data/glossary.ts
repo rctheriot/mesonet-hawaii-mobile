@@ -541,4 +541,34 @@ export const VARIABLE_GLOSSARY: Record<string, GlossaryEntry> = {
     ],
     unitNote: 'Displayed as a percentage (volumetric water content)',
   },
+
+  // ── Fuel ───────────────────────────────────────────────────────────────────
+  FM_1_Avg: {
+    label: 'Fuel Moisture',
+    description: 'The water content of a wooden dowel that stands in for small dead vegetation such as twigs and dry grass. Drier fuel catches fire and spreads flames more easily, so this is a key wildfire danger indicator.',
+    examplesImperial: [
+      'Above 20%: moist — fire unlikely to spread',
+      '10–20%: drying — fire danger rising',
+      'Below 10%: very dry — high fire danger',
+    ],
+    examplesMetric: [
+      'Above 20%: moist — fire unlikely to spread',
+      '10–20%: drying — fire danger rising',
+      'Below 10%: very dry — high fire danger',
+    ],
+    unitNote: 'Displayed as a percentage of the fuel\'s dry weight',
+  },
+  FT_1_Avg: {
+    label: 'Fuel Temperature',
+    description: 'The temperature of the fuel moisture sensor, which sits in the open like dead vegetation. In direct sun it runs well above air temperature, and hotter fuel dries out faster.',
+    examplesImperial: [
+      'Near air temperature: overcast or night',
+      'Up to 10–30°F above air temperature: strong midday sun',
+    ],
+    examplesMetric: [
+      'Near air temperature: overcast or night',
+      'Up to 5–15°C above air temperature: strong midday sun',
+    ],
+    unitNote: 'Displayed in °F (Imperial) or °C (Metric)',
+  },
 };

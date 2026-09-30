@@ -16,12 +16,13 @@ export const ALLOWED_VARIABLES = new Set([
   'SM_1_Avg', 'SM_2_Avg', 'SM_3_Avg',
   'RF_1_Tot300s', 'RFint_1_Max',
   'Wlvl_1_Avg', 'Twt_1_Avg',
+  'FM_1_Avg', 'FT_1_Avg',
 ]);
 
 // ─── Variable grouping ────────────────────────────────────────────────────────
 
 export const GROUP_ORDER = [
-  'Water', 'Rainfall', 'Temperature', 'Humidity', 'Radiation', 'Wind', 'Pressure', 'Soil',
+  'Water', 'Rainfall', 'Temperature', 'Humidity', 'Radiation', 'Wind', 'Pressure', 'Soil', 'Fuel',
 ] as const;
 export type VariableGroup = typeof GROUP_ORDER[number];
 
@@ -52,6 +53,8 @@ export const VARIABLE_GROUP: Record<string, VariableGroup> = {
   Tsoil_3_Avg: 'Soil', Tsoil_4_Avg: 'Soil',
   SHFsrf_1_Avg: 'Soil',
   SM_1_Avg: 'Soil', SM_2_Avg: 'Soil', SM_3_Avg: 'Soil',
+  // Fuel (fire-weather sensors — only a few stations carry them)
+  FM_1_Avg: 'Fuel', FT_1_Avg: 'Fuel',
 };
 
 // Groups an array of items into ordered category buckets, sorted alphabetically within each group.
