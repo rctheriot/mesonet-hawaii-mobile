@@ -4,7 +4,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Station } from '../../types/api';
 import { stationStatusKey, STATUS_HEX, STATUS_HOLLOW } from '../../theme';
-import { stationDivIcon, selectedPinIcon, userLocationIcon } from './mapIcons';
+import { stationDivIcon, selectedPinIcon, userLocationIcon, clusterCountIcon, clusterValueIcon } from './mapIcons';
+import { clusterPoints, median } from './cluster';
 
 // ─── Tile sources (CartoDB raster) ───────────────────────────────────────────
 // CARTO requires a free API key (5M requests/month) since basemap tiles
@@ -44,6 +45,51 @@ function applyVarIcon(
   }
 }
 
+// ─── Clustering ───────────────────────────────────────────────────────────────
+// At low zoom, stations that would overlap are drawn as one group marker. Past
+// CLUSTER_MAX_ZOOM every station is drawn on its own, so all stay reachable.
+export const CLUSTER_MAX_ZOOM = 10;
+const CLUSTER_RADIUS_PX = 50;
+
+export type ClusterStyle = 'median' | 'range';
+
+export interface ClusterOptions {
+  style: ClusterStyle;
+  // Raw (API-unit) value per station, for the median/range styles. Omitted in
+  // status mode and for variables that must not be combined (water level), and
+  // the group then shows a count.
+  values?: Map<string, number>;
+  colorFor?: (raw: number) => string;
+  labelFor?: (raw: number) => string;
+}
+
+// Picks the group marker for a set of stations. `memberColor` is the colour each
+// member would be drawn in on its own (status colour, value colour, or gray).
+function clusterIcon(ids: string[], opts: ClusterOptions, memberColor: (id: string) => string): L.DivIcon {
+  const { values, colorFor, labelFor } = opts;
+  const raw = values ? ids.map(id => values.get(id)).filter((v): v is number => v != null && Number.isFinite(v)) : [];
+
+  if (!values || !colorFor || !labelFor || raw.length === 0) {
+    const counts = new Map<string, number>();
+    for (const id of ids) {
+      const c = memberColor(id);
+      counts.set(c, (counts.get(c) ?? 0) + 1);
+    }
+    return clusterCountIcon(ids.length, Array.from(counts, ([color, n]) => ({ color, n })));
+  }
+
+  if (opts.style === 'median') {
+    const m = median(raw)!;
+    return clusterValueIcon(colorFor(m), labelFor(m), ids.length);
+  }
+
+  const lo = Math.min(...raw), hi = Math.max(...raw);
+  const loLabel = labelFor(lo), hiLabel = labelFor(hi);
+  return loLabel === hiLabel
+    ? clusterValueIcon(colorFor(lo), loLabel, ids.length)
+    : clusterValueIcon(`linear-gradient(90deg, ${colorFor(lo)}, ${colorFor(hi)})`, `${loLabel}–${hiLabel}`, ids.length);
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface StationMapProps {
   stations: Station[];
@@ -69,6 +115,9 @@ interface StationMapProps {
   varColors?: Map<string, string>;
   varLabels?: Map<string, string>;
   varArrows?: Map<string, number>;
+  // Group overlapping stations at low zoom. Omit to draw every station (the
+  // favourites map, which has few). Pass a memoised object — a new one re-clusters.
+  cluster?: ClusterOptions;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -90,6 +139,7 @@ export default function StationMap({
   varColors,
   varLabels,
   varArrows,
+  cluster,
 }: StationMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef        = useRef<L.Map | null>(null);
@@ -97,10 +147,71 @@ export default function StationMap({
   const markersRef    = useRef<Record<string, L.Marker>>({});
   const metaRef       = useRef<Record<string, { color: string; hollow: boolean }>>({});
   const userMarkerRef = useRef<L.Marker | null>(null);
+  const clusterLayerRef = useRef<L.LayerGroup | null>(null);
 
   // Keep callbacks in refs so effects that run once don't capture stale closures.
   const onSelectRef = useRef(onSelectStation);
   onSelectRef.current = onSelectStation;
+
+  // Latest values for recluster(), which also runs from the map's zoomend
+  // handler (registered once) and so must not close over render-time props.
+  const clusterRef = useRef(cluster);
+  clusterRef.current = cluster;
+  const selectedRef = useRef(selectedStationId);
+  selectedRef.current = selectedStationId;
+  const varColorsRef = useRef(varColors);
+  varColorsRef.current = varColors;
+
+  // Show or hide each station marker and rebuild the group markers for the
+  // current zoom. Clusters are computed in projected pixels, which don't change
+  // on pan, so this only needs to run on zoom and when the data changes.
+  function recluster() {
+    const map = mapRef.current;
+    const layer = clusterLayerRef.current;
+    if (!map || !layer) return;
+    layer.clearLayers();
+
+    const markers = markersRef.current;
+    const show = (id: string) => { if (!map.hasLayer(markers[id])) markers[id].addTo(map); };
+    const opts = clusterRef.current;
+    const zoom = map.getZoom();
+
+    if (!opts || zoom > CLUSTER_MAX_ZOOM) {
+      Object.keys(markers).forEach(show);
+      return;
+    }
+
+    // The selected station is never folded into a group.
+    const selected = selectedRef.current;
+    if (selected && markers[selected]) show(selected);
+    const points = Object.keys(markers)
+      .filter(id => id !== selected)
+      .map(id => {
+        const p = map.project(markers[id].getLatLng(), zoom);
+        return { id, x: p.x, y: p.y };
+      });
+
+    const colors = varColorsRef.current;
+    const memberColor = (id: string) =>
+      colors ? (colors.get(id) ?? '#94a3b8') : (metaRef.current[id]?.color ?? '#94a3b8');
+
+    for (const c of clusterPoints(points, CLUSTER_RADIUS_PX)) {
+      if (c.ids.length === 1) { show(c.ids[0]); continue; }
+      c.ids.forEach(id => markers[id].remove());
+      const group = L.marker(map.unproject([c.x, c.y], zoom), {
+        icon: clusterIcon(c.ids, opts, memberColor),
+        keyboard: false,
+      });
+      // Tapping a group zooms to fit its stations rather than opening one.
+      group.on('click', () => {
+        const bounds = L.latLngBounds(c.ids.map(id => markers[id].getLatLng()));
+        map.flyToBounds(bounds, { padding: [60, 60], maxZoom: CLUSTER_MAX_ZOOM + 2, duration: 0.8 });
+      });
+      layer.addLayer(group);
+    }
+  }
+  const reclusterRef = useRef(recluster);
+  reclusterRef.current = recluster;
 
   // ── 1. Initialize map (runs once) ────────────────────────────────────────
   useEffect(() => {
@@ -130,6 +241,9 @@ export default function StationMap({
     });
     tile.addTo(map);
 
+    clusterLayerRef.current = L.layerGroup().addTo(map);
+    map.on('zoomend', () => reclusterRef.current());
+
     mapRef.current = map;
     tileRef.current = tile;
 
@@ -137,6 +251,7 @@ export default function StationMap({
       map.remove();
       mapRef.current = null;
       tileRef.current = null;
+      clusterLayerRef.current = null;
       markersRef.current = {};
       metaRef.current = {};
     };
@@ -199,6 +314,7 @@ export default function StationMap({
       marker.addTo(map);
       markersRef.current[station_id] = marker;
     });
+    recluster();
   }, [stations, varColors, varLabels, varArrows]);
 
   // ── 5. Selected station → teardrop pin ───────────────────────────────────
@@ -212,7 +328,13 @@ export default function StationMap({
     if (selectedStationId && markersRef.current[selectedStationId]) {
       markersRef.current[selectedStationId].setIcon(selectedPinIcon());
     }
+    recluster();
   }, [selectedStationId, varColors, varLabels, varArrows]);
+
+  // ── 5b. Re-cluster when grouping options change ──────────────────────────
+  useEffect(() => {
+    recluster();
+  }, [cluster]);
 
   // ── 6. User location marker ───────────────────────────────────────────────
   useEffect(() => {

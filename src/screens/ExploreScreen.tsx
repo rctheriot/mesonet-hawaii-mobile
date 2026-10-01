@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LuSettings, LuInfo } from 'react-icons/lu';
-import StationMap from '../components/Map/StationMap';
+import StationMap, { type ClusterOptions, type ClusterStyle } from '../components/Map/StationMap';
 import MapLegend, { type MapMode } from '../components/Map/MapLegend';
 import MapLoadingBadge from '../components/Map/MapLoadingBadge';
 import StationList from '../components/StationList/StationList';
@@ -18,6 +18,27 @@ import { tempToHex, windToHex, rhToHex, rainToHex, smToHex, swToHex, WATER_LEVEL
 import { mapModeOptions } from '../components/Map/mapModes';
 
 type View = 'map' | 'list';
+
+// EXPERIMENT (dev-map-clustering): how overlapping stations are grouped at low
+// zoom. Switchable on the map and via ?group= so the options can be compared.
+type GroupMode = 'off' | ClusterStyle;
+const GROUP_MODES: { mode: GroupMode; label: string }[] = [
+  { mode: 'off',    label: 'Off' },
+  { mode: 'median', label: 'Median' },
+  { mode: 'range',  label: 'Range' },
+];
+
+// Marker colour for a raw (API-unit) value in the given map mode.
+function colorForValue(mode: MapMode, value: number): string {
+  if      (mode === 'Tair_1_Avg')  return tempToHex(value);
+  else if (mode === 'Tsoil_1_Avg') return tempToHex(value);
+  else if (mode === 'WS_1_Avg')    return windToHex(value);
+  else if (mode === 'RH_1_Avg')    return rhToHex(value);
+  else if (mode === 'SM_1_Avg')    return smToHex(value);
+  else if (mode === 'SWin_1_Avg')  return swToHex(value);
+  else if (mode === 'Wlvl_1_Avg')  return WATER_LEVEL_HEX;
+  else                             return rainToHex(value);
+}
 
 const MAP_MODE_OPTIONS = mapModeOptions(REGION);
 
@@ -48,20 +69,21 @@ export default function ExploreScreen() {
   const dataLoading = mapMode !== 'status' && !activeVarData &&
     (mapMode === 'RF_1_Tot300s' ? rainFetching : varFetching);
 
+  // Pill label for a raw (API-unit) value: converted to the user's units and rounded.
+  function labelForValue(value: number, rawUnits: string): string {
+    const { value: converted } = convertValue(value, rawUnits, settings.units, mapMode);
+    return mapMode === 'RF_1_Tot300s'
+      ? converted.toFixed(settings.units === 'imperial' ? 2 : 1)
+      : mapMode === 'Wlvl_1_Avg'
+      ? formatValue(converted, mapMode)
+      : String(Math.round(converted));
+  }
+
   const varColors = useMemo(() => {
     if (!activeVarData || mapMode === 'status') return undefined;
     const map = new Map<string, string>();
     for (const [id, { value }] of activeVarData) {
-      let color: string;
-      if      (mapMode === 'Tair_1_Avg')  color = tempToHex(value);
-      else if (mapMode === 'Tsoil_1_Avg') color = tempToHex(value);
-      else if (mapMode === 'WS_1_Avg')    color = windToHex(value);
-      else if (mapMode === 'RH_1_Avg')    color = rhToHex(value);
-      else if (mapMode === 'SM_1_Avg')    color = smToHex(value);
-      else if (mapMode === 'SWin_1_Avg')  color = swToHex(value);
-      else if (mapMode === 'Wlvl_1_Avg')  color = WATER_LEVEL_HEX;
-      else                                color = rainToHex(value);
-      map.set(id, color);
+      map.set(id, colorForValue(mapMode, value));
     }
     return map;
   }, [activeVarData, mapMode]);
@@ -77,16 +99,34 @@ export default function ExploreScreen() {
     if (!activeVarData || mapMode === 'status') return undefined;
     const map = new Map<string, string>();
     for (const [id, { value, units: rawUnits }] of activeVarData) {
-      const { value: converted } = convertValue(value, rawUnits, settings.units, mapMode);
-      const label = mapMode === 'RF_1_Tot300s'
-        ? converted.toFixed(settings.units === 'imperial' ? 2 : 1)
-        : mapMode === 'Wlvl_1_Avg'
-        ? formatValue(converted, mapMode)
-        : String(Math.round(converted));
-      map.set(id, label);
+      map.set(id, labelForValue(value, rawUnits));
     }
     return map;
   }, [activeVarData, mapMode, settings.units]);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const groupParam = searchParams.get('group');
+  const groupMode: GroupMode = GROUP_MODES.some(g => g.mode === groupParam) ? groupParam as GroupMode : 'median';
+  const setGroupMode = (mode: GroupMode) =>
+    setSearchParams(p => { p.set('group', mode); return p; }, { replace: true });
+
+  const clusterOptions = useMemo((): ClusterOptions | undefined => {
+    if (groupMode === 'off') return undefined;
+    // Water levels aren't comparable between gauges, so groups show a count only.
+    if (!activeVarData || mapMode === 'status' || mapMode === 'Wlvl_1_Avg') return { style: groupMode };
+    const values = new Map<string, number>();
+    let rawUnits = '';
+    for (const [id, { value, units }] of activeVarData) {
+      values.set(id, value);
+      rawUnits = units;
+    }
+    return {
+      style: groupMode,
+      values,
+      colorFor: v => colorForValue(mapMode, v),
+      labelFor: v => labelForValue(v, rawUnits),
+    };
+  }, [groupMode, activeVarData, mapMode, settings.units]);
 
   const [flyTo, setFlyTo] = useState<{ lat: number; lng: number; zoom?: number } | undefined>();
 
@@ -194,7 +234,23 @@ export default function ExploreScreen() {
             varColors={varColors}
             varLabels={varLabels}
             varArrows={varArrows}
+            cluster={clusterOptions}
           />
+          {/* EXPERIMENT: grouping style switcher */}
+          <div className="absolute top-14 left-2.5 z-[1001] flex items-center gap-1 rounded-xl bg-white/95 dark:bg-zinc-800/95 shadow border border-slate-200 dark:border-zinc-600 p-0.5 text-xs">
+            <span className="px-1.5 text-slate-500 dark:text-zinc-400">Group</span>
+            {GROUP_MODES.map(g => (
+              <button
+                key={g.mode}
+                onClick={() => setGroupMode(g.mode)}
+                className={`px-2 py-1 rounded-lg font-medium transition-colors ${
+                  groupMode === g.mode
+                    ? 'bg-sky-500 text-white'
+                    : 'text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-700'
+                }`}
+              >{g.label}</button>
+            ))}
+          </div>
           {dataLoading && <MapLoadingBadge />}
           <MapLegend mode={mapMode} units={settings.units} />
         </div>

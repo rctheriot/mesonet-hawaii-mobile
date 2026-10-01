@@ -46,6 +46,63 @@ export function stationDivIcon(color: string, hollow: boolean, label?: string, a
   });
 }
 
+// ─── Cluster markers ──────────────────────────────────────────────────────────
+// Shown in place of a group of stations that would overlap at the current zoom.
+
+const COUNT_BADGE_STYLE = `
+  position:absolute; top:-8px; right:-9px; min-width:17px; height:17px; padding:0 4px;
+  box-sizing:border-box; border-radius:9px; background:#0f172a; color:white;
+  border:1.5px solid white; font-size:10px; font-weight:700; line-height:14px;
+  text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.4);`;
+
+// Count-only bubble. `ring` draws the members' colours (e.g. status mix) as a
+// segmented border, in proportion to how many stations have each colour.
+export function clusterCountIcon(count: number, ring?: { color: string; n: number }[]): L.DivIcon {
+  const size = count < 10 ? 30 : count < 50 ? 34 : 38;
+  let border = 'background:#475569;';
+  if (ring && ring.length) {
+    const total = ring.reduce((s, r) => s + r.n, 0);
+    let acc = 0;
+    const stops = ring.map(r => {
+      const from = (acc / total) * 360;
+      acc += r.n;
+      return `${r.color} ${from}deg ${(acc / total) * 360}deg`;
+    });
+    border = `background:conic-gradient(${stops.join(',')});`;
+  }
+  return L.divIcon({
+    className: '',
+    html: `<div style="width:${size}px; height:${size}px; border-radius:50%; ${border}
+        padding:6px; box-sizing:border-box; box-shadow:0 1px 5px rgba(0,0,0,0.45); cursor:pointer;">
+      <div style="width:100%; height:100%; border-radius:50%; background:#1e293b;
+          display:flex; align-items:center; justify-content:center;
+          color:white; font-size:11px; font-weight:700;">${count}</div>
+    </div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+// Value pill for a group: same look as a station pill, plus a stacked-card edge
+// and a count badge so it reads as "several stations" rather than one.
+// `background` is any CSS background (a colour, or a gradient for a range).
+export function clusterValueIcon(background: string, label: string, count: number): L.DivIcon {
+  return L.divIcon({
+    className: '',
+    html: `<div style="position:relative; display:inline-block; cursor:pointer;">
+      <div style="position:absolute; inset:0; transform:translate(3px,-3px); border-radius:6px;
+          background:${background}; opacity:0.55; border:1.5px solid white;"></div>
+      <div style="position:relative; background:${background}; border-radius:6px; padding:4px 7px;
+          border:1.5px solid white; box-shadow:0 1px 5px rgba(0,0,0,0.45); white-space:nowrap;">
+        <span style="color:white; font-size:12px; font-weight:700; line-height:1; text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,-1px 0 0 #000,1px 0 0 #000,0 -1px 0 #000,0 1px 0 #000;">${label}</span>
+      </div>
+      <div style="${COUNT_BADGE_STYLE}">${count}</div>
+    </div>`,
+    iconSize: null as unknown as L.PointExpression,
+    iconAnchor: [14, 12],
+  });
+}
+
 // ─── Selected station pin ─────────────────────────────────────────────────────
 // Sky-blue teardrop shown instead of the circle when a station is selected.
 // iconAnchor at [11, 30] places the tip of the pin exactly on the coordinate.
