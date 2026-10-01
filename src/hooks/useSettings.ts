@@ -7,6 +7,8 @@ interface Settings {
   homeVarId: string | null;
   units: 'metric' | 'imperial';
   mapMode: string;
+  // How overlapping stations are grouped on the Station Network map.
+  mapGroup: 'off' | 'median' | 'range';
   // Persisted so returning from a station detail page restores the map position.
   mapLat: number;
   mapLng: number;
@@ -28,6 +30,7 @@ const DEFAULTS: Settings = {
   homeVarId: 'RF_1_Tot300s',
   units: 'imperial',
   mapMode: 'RF_1_Tot300s',
+  mapGroup: 'median',
   mapLat: REGION.mapCenter[0],
   mapLng: REGION.mapCenter[1],
   mapZoom: REGION.mapZoom,

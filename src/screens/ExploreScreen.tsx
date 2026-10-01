@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { LuSettings, LuInfo } from 'react-icons/lu';
 import StationMap, { type ClusterOptions, type ClusterStyle } from '../components/Map/StationMap';
 import MapLegend, { type MapMode } from '../components/Map/MapLegend';
@@ -19,8 +19,8 @@ import { mapModeOptions } from '../components/Map/mapModes';
 
 type View = 'map' | 'list';
 
-// EXPERIMENT (dev-map-clustering): how overlapping stations are grouped at low
-// zoom. Switchable on the map and via ?group= so the options can be compared.
+// How overlapping stations are grouped at low zoom; switchable on the map and
+// saved in settings so it survives opening a station and coming back.
 type GroupMode = 'off' | ClusterStyle;
 const GROUP_MODES: { mode: GroupMode; label: string }[] = [
   { mode: 'off',    label: 'Off' },
@@ -104,11 +104,9 @@ export default function ExploreScreen() {
     return map;
   }, [activeVarData, mapMode, settings.units]);
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const groupParam = searchParams.get('group');
-  const groupMode: GroupMode = GROUP_MODES.some(g => g.mode === groupParam) ? groupParam as GroupMode : 'median';
-  const setGroupMode = (mode: GroupMode) =>
-    setSearchParams(p => { p.set('group', mode); return p; }, { replace: true });
+  // A saved value this build doesn't offer (e.g. the removed 'count') falls back to median.
+  const groupMode: GroupMode = GROUP_MODES.some(g => g.mode === settings.mapGroup) ? settings.mapGroup : 'median';
+  const setGroupMode = (mode: GroupMode) => updateSettings({ mapGroup: mode });
 
   const clusterOptions = useMemo((): ClusterOptions | undefined => {
     if (groupMode === 'off') return undefined;
@@ -236,8 +234,8 @@ export default function ExploreScreen() {
             varArrows={varArrows}
             cluster={clusterOptions}
           />
-          {/* EXPERIMENT: grouping style switcher */}
-          <div className="absolute top-14 left-2.5 z-[1001] flex items-center gap-1 rounded-xl bg-white/95 dark:bg-zinc-800/95 shadow border border-slate-200 dark:border-zinc-600 p-0.5 text-xs">
+          {/* Grouping style switcher */}
+          <div className="absolute top-2.5 left-2.5 z-[1001] flex items-center gap-1 rounded-xl bg-white/95 dark:bg-zinc-800/95 shadow border border-slate-200 dark:border-zinc-600 p-0.5 text-xs">
             <span className="px-1.5 text-slate-500 dark:text-zinc-400">Group</span>
             {GROUP_MODES.map(g => (
               <button
@@ -251,7 +249,7 @@ export default function ExploreScreen() {
               >{g.label}</button>
             ))}
           </div>
-          {dataLoading && <MapLoadingBadge />}
+          {dataLoading && <MapLoadingBadge belowControls />}
           <MapLegend mode={mapMode} units={settings.units} />
         </div>
 
