@@ -1,6 +1,7 @@
 import { apiGet } from './client';
 import type { Measurement, TimeRange } from '../types/api';
 import { REGION } from '../config/regions';
+import { dropImplausible } from '../utils/qc';
 
 // ─── Date ranges and row limits ───────────────────────────────────────────────
 // The API returns rows newest-first, and when `limit` is omitted it silently stops
@@ -32,6 +33,9 @@ function warnIfTruncated(rows: unknown[], limit: number, what: string) {
   }
 }
 
+// Every reading shown on screen passes through dropImplausible (utils/qc.ts),
+// which removes fill codes and physically impossible values. Where a function
+// checks for truncation, the filter runs after it: the check needs the raw count.
 function toRows(data: Measurement[] | Record<string, Measurement>): Measurement[] {
   return Array.isArray(data) ? data : Object.values(data);
 }
@@ -66,7 +70,7 @@ export async function fetchLatestMeasurements(stationId: string, signal?: AbortS
     },
     signal
   );
-  return toRows(data);
+  return dropImplausible(toRows(data));
 }
 
 // Batched latest readings for a set of stations, limited to the given variables.
@@ -112,7 +116,7 @@ export async function fetchLatestMeasurementsBatch(
 
   // Keep only the most recent row per (station, variable).
   const latest = new Map<string, Measurement>();
-  for (const m of rows) {
+  for (const m of dropImplausible(rows)) {
     if (!m.station_id || m.value == null) continue;
     const key = `${m.station_id}|${m.variable}`;
     const existing = latest.get(key);
@@ -158,7 +162,7 @@ export async function fetchMapMeasurements(varId: string, signal?: AbortSignal):
   warnIfTruncated(raw, limit, `map ${varId}`);
   // Keep the most recent row per station, then reduce to its numeric value.
   const latest = new Map<string, Measurement>();
-  for (const m of raw) {
+  for (const m of dropImplausible(raw)) {
     if (!m.station_id || m.value == null) continue;
     const existing = latest.get(m.station_id);
     if (!existing || new Date(m.timestamp) > new Date(existing.timestamp)) {
@@ -197,6 +201,8 @@ export async function fetchStreamGaugeIds(signal?: AbortSignal): Promise<Set<str
   );
   const rows = toRows(data);
   warnIfTruncated(rows, limit, 'stream gauges');
+  // Not filtered by dropImplausible: this only asks which stations have a water
+  // level sensor, and a gauge reporting a fill code still is one.
   return new Set(rows.map(m => m.station_id));
 }
 
@@ -222,7 +228,7 @@ export async function fetchMapRainfall24hr(signal?: AbortSignal): Promise<Map<st
   const rows = toRows(data);
   warnIfTruncated(rows, limit, 'map rainfall 24h');
   const sums = new Map<string, number>();
-  for (const m of rows) {
+  for (const m of dropImplausible(rows)) {
     if (m.value == null) continue;
     const v = Number(m.value);
     if (Number.isNaN(v)) continue;
@@ -260,5 +266,5 @@ export async function fetchHistoricalMeasurements(
   );
   const rows = toRows(data);
   warnIfTruncated(rows, limit, `history ${varId} ${range}`);
-  return rows;
+  return dropImplausible(rows);
 }
