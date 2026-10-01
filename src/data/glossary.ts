@@ -545,7 +545,7 @@ export const VARIABLE_GLOSSARY: Record<string, GlossaryEntry> = {
   // ── Fuel ───────────────────────────────────────────────────────────────────
   FM_1_Avg: {
     label: 'Fuel Moisture',
-    description: 'The water content of a wooden dowel that stands in for small dead vegetation such as twigs and dry grass. Drier fuel catches fire and spreads flames more easily, so this is a key wildfire danger indicator.',
+    description: 'The water content of a ponderosa pine dowel, the standard material for this measurement, which stands in for small dead vegetation such as twigs and dry grass. Drier fuel catches fire and spreads flames more easily, so this is a key wildfire danger indicator.',
     examplesImperial: [
       'Above 20%: moist — fire unlikely to spread',
       '10–20%: drying — fire danger rising',
@@ -560,7 +560,7 @@ export const VARIABLE_GLOSSARY: Record<string, GlossaryEntry> = {
   },
   FT_1_Avg: {
     label: 'Fuel Temperature',
-    description: 'The temperature of the fuel moisture sensor, which sits in the open like dead vegetation. In direct sun it runs well above air temperature, and hotter fuel dries out faster.',
+    description: 'The temperature of the same ponderosa pine dowel used for fuel moisture, which sits in the open like dead vegetation. In direct sun it runs well above air temperature, and hotter fuel dries out faster.',
     examplesImperial: [
       'Near air temperature: overcast or night',
       'Up to 10–30°F above air temperature: strong midday sun',
